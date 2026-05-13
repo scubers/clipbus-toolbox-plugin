@@ -10,14 +10,18 @@ const ATTACHMENT_TYPE = "plugin.pasty.awesome.decode.preview";
 const ATTACHMENT_KEY = "primary";
 
 function buttonsFor(payload) {
+  // Host consumes `isEnabled` to decide whether to render the native button.
+  // The protocol is: return only buttons that should appear (omit unavailable
+  // ones), and every returned button must carry `isEnabled: true`.
   const buttons = [];
-  buttons.push({ id: "copy-decoded", title: "Copy" });
+  buttons.push({ id: "copy-decoded", title: "Copy", isEnabled: true });
   if (payload.encoding === "jwt" || payload.decodedIsJSON === true) {
-    buttons.push({ id: "copy-json", title: "Copy as JSON" });
+    buttons.push({ id: "copy-json", title: "Copy as JSON", isEnabled: true });
   }
   buttons.push({
     id: "toggle-expand",
-    title: payload.expanded === true ? "Show Less" : "Show More"
+    title: payload.expanded === true ? "Show Less" : "Show More",
+    isEnabled: true
   });
   return buttons;
 }

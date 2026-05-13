@@ -71,13 +71,15 @@ decoded: JSON.stringify(
 | 普通编码（base64 / url / decodedIsJSON=false 的 escaped_json） | `[copy, toggle-expand]` |
 | JSON 类（`decodedIsJSON === true` 或 `encoding === "jwt"`） | `[copy, copy-json, toggle-expand]` |
 
-每个 button object 形态（不再带 `isEnabled` 字段）：
+每个 button object 形态：
 
 ```js
-{ id: "copy-decoded",  title: "Copy" }
-{ id: "copy-json",     title: "Copy as JSON" }
-{ id: "toggle-expand", title: payload.expanded ? "Show Less" : "Show More" }
+{ id: "copy-decoded",  title: "Copy",          isEnabled: true }
+{ id: "copy-json",     title: "Copy as JSON",  isEnabled: true }
+{ id: "toggle-expand", title: payload.expanded ? "Show Less" : "Show More", isEnabled: true }
 ```
+
+`isEnabled: true` 是宿主的实际消费字段——SDK 的 TS 类型虽然没声明，但宿主用它决定是否渲染按钮（缺省/false 都会被隐藏）。所以协议是：**不可用的 button 直接不返回**，**返回的 button 必须带 `isEnabled: true`**。两个手段二选一即可表达"不可用"，本插件采用"不返回"。
 
 `invokeOperation` 行为不变（path: copy-decoded / copy-json / toggle-expand 三分支沿用）。删除"payload 非法时仍走 copy-decoded 兜底"的逻辑——既然此时不返回任何按钮，invokeOperation 不会被调到。
 
@@ -87,9 +89,9 @@ decoded: JSON.stringify(
 
 ### 5.1 视觉容器
 
-webview 内部画**一个固定深色 panel**（独立于宿主主题），作为 chip + 预览 + 展开代码区的统一容器。外层"检测到的内容 N"那一层 chrome 是宿主提供的，webview 不重复。
+webview 内部画一个 panel，作为 chip + 预览 + 展开代码区的统一容器。外层"检测到的内容 N"那一层 chrome 是宿主提供的，webview 不重复。
 
-固定深色（不响应 `--pasty-*` token）：约 `oklch(0.18 0.02 250)` 中性偏冷深灰，圆角 8px。
+panel 配色**完全跟随宿主主题**：背景 `--pasty-surface-elevated`，边框 `--pasty-border`，圆角 8px。浅主题下是浅米色 elevated card，深主题下是稍亮一档的深灰 card。
 
 panel 外（webview 边界到 panel 边界）背景透明，吃透宿主主题。
 
@@ -113,7 +115,7 @@ panel 内单行 row：
 在折叠态 row 下方滑出一个 `<pre>` 区块：
 
 - 折叠态 row 仍保留（不消失），整行仍可点击折叠
-- pre 区：固定深色背景（同 panel），内部 padding 12px
+- pre 区：背景 `--pasty-surface`（比 panel 的 surface-elevated 稍低一级），边框 `--pasty-border`，内部 padding 12px
 - pre 内 max-height ≈ 360px，内部 `overflow: auto` 可滚
 - 内容是 `payload.decoded` 经 5.4 的高亮 tokenizer 渲染（仅当 `decodedIsJSON === true || encoding === "jwt"`；否则纯白文本）
 - 字体：等宽，12px，line-height 1.45
@@ -148,7 +150,7 @@ CSS class 配色（双套，浅/深 scheme 切换；用 `@media (prefers-color-s
 | `.jh-null` | `oklch(0.50 0.18 25)` 深红 | `oklch(0.70 0.15 25)` 中红 |
 | `.jh-punct` | `oklch(0.55 0.02 250)` 中灰 | `oklch(0.55 0.02 250)` 中灰 |
 
-注：因为 panel 是固定深色，pre 内实际只会落到 dark scheme 一套；light scheme 那一列是为未来 panel 也跟主题预留，先一并写入但实际不激活。这一行可以等真要做浅 panel 时再加。**v1 实现仅深色一套**。
+两套都激活：dark 为默认，light 通过 `@media (prefers-color-scheme: light)` 切换。固定的是"不跟随宿主 accent/success/warning 等语义色"——浅深主题各自的固定一套，保证 token 类型颜色稳定。
 
 ### 5.5 chip 颜色
 
@@ -178,15 +180,20 @@ oklch 同 L/C 家族，只换 hue：
 
 | 元素 | 来源 |
 |---|---|
-| panel 底色 | 固定 `oklch(0.18 0.02 250)`，独立于宿主主题 |
-| 预览文本、pre 默认文字 | 固定浅灰 `oklch(0.78 0.02 250)` |
-| chevron / copy icon 默认色 | 固定中灰 `oklch(0.62 0.02 250)` |
-| icon hover overlay | 固定浅白透明 `oklch(1 0 0 / 0.08)` |
-| JSON 高亮 | 固定（5.4 dark scheme 那一套） |
-| chip | 固定 hue 家族（5.5） |
+| panel 底色 | `--pasty-surface-elevated` |
+| panel 边框 | `--pasty-border` |
+| pre 区底色 | `--pasty-surface` |
+| pre 区边框 | `--pasty-border` |
+| 预览文本 | `--pasty-text-secondary` |
+| pre 默认文字 | `--pasty-text-primary` |
+| chevron / copy icon 默认色 | `--pasty-text-tertiary` |
+| icon hover 背景 | `--pasty-divider` |
+| 空状态文字 | `--pasty-text-tertiary` |
+| chip | 固定 oklch hue 家族（5.5） |
+| JSON 高亮 token | 固定（5.4 双 scheme 各一套） |
 | **webview 边界外**（panel 之外的 padding 区） | 透明，吃透宿主 |
 
-宿主 token 在本设计里不直接用到——所有 webview 内可见元素都在 panel 内，固定配色；panel 之外让宿主主题穿透。
+只有 **chip + JSON 高亮 token** 是固定色（这两个是 renderer 的视觉身份，跟主题色无语义关联）；其它一切跟随宿主主题。
 
 ## 6. UX 行为
 
@@ -247,7 +254,6 @@ oklch 同 L/C 家族，只换 hue：
 
 ## 9. 不做（YAGNI）
 
-- panel 跟主题走的"浅模式"（5.4 light scheme 配色先写但不激活）
 - JSON 之外的语法高亮（URL params、base64 inside hex 等）
 - inline 双击复制、长按菜单等扩展手势
 - pre 区的"展开全部 / 收回"二级按钮（直接靠 max-height + 内滚）

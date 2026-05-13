@@ -218,7 +218,12 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<!-- Global: jh-* spans are injected via v-html and won't match scoped selectors -->
+<!--
+  Global: jh-* spans are injected via v-html and won't match scoped selectors.
+  Two palettes — dark (default) and light (via prefers-color-scheme). Colors
+  are fixed (independent of host accent/success/warning tokens) so JSON tokens
+  read consistently regardless of which theme color the host happens to use.
+-->
 <style>
 .jh-key    { color: oklch(0.82 0.18 145); }
 .jh-string { color: oklch(0.92 0.04 80);  }
@@ -226,6 +231,15 @@ onBeforeUnmount(() => {
 .jh-bool   { color: oklch(0.75 0.15 230); }
 .jh-null   { color: oklch(0.70 0.15 25);  }
 .jh-punct  { color: oklch(0.55 0.02 250); }
+
+@media (prefers-color-scheme: light) {
+  .jh-key    { color: oklch(0.45 0.18 145); }
+  .jh-string { color: oklch(0.40 0.05 80);  }
+  .jh-number { color: oklch(0.55 0.18 50);  }
+  .jh-bool   { color: oklch(0.45 0.20 230); }
+  .jh-null   { color: oklch(0.50 0.18 25);  }
+  .jh-punct  { color: oklch(0.55 0.02 250); }
+}
 </style>
 
 <style scoped>
@@ -236,9 +250,10 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-/* Fixed dark panel — independent of host theme */
+/* Panel — uses host theme tokens so it blends with the host card */
 .decode-panel {
-  background: oklch(0.18 0.02 250);
+  background: var(--pasty-surface-elevated, transparent);
+  border: 1px solid var(--pasty-border, transparent);
   border-radius: 8px;
   padding: 8px;
   margin: 0;
@@ -255,7 +270,7 @@ onBeforeUnmount(() => {
   user-select: none;
 }
 
-/* Chip */
+/* Chip — fixed oklch family, only hue varies per encoding */
 .chip {
   display: inline-flex;
   align-items: center;
@@ -275,7 +290,7 @@ onBeforeUnmount(() => {
 .chip--url          { --chip-hue: 220; }
 .chip--base64       { --chip-hue: 30;  }
 
-/* Preview text */
+/* Preview text — uses host theme secondary text token */
 .preview {
   flex: 1;
   min-width: 0;
@@ -284,10 +299,10 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
   font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 12px;
-  color: oklch(0.78 0.02 250);
+  color: var(--pasty-text-secondary, inherit);
 }
 
-/* Icon buttons */
+/* Icon buttons — uses host tertiary text + divider for hover */
 .icon-btn {
   display: inline-flex;
   align-items: center;
@@ -300,11 +315,11 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   background: none;
   cursor: pointer;
-  color: oklch(0.62 0.02 250);
+  color: var(--pasty-text-tertiary, inherit);
   transition: background 0.1s;
 }
 .icon-btn:hover {
-  background: oklch(1 0 0 / 0.08);
+  background: var(--pasty-divider, rgba(127, 127, 127, 0.12));
 }
 
 /* Chevron rotation for expanded state */
@@ -313,12 +328,13 @@ onBeforeUnmount(() => {
   transition: transform 0.15s;
 }
 
-/* Expanded code block */
+/* Expanded code block — uses host surface token for background */
 .code {
   margin-top: 8px;
   margin-bottom: 0;
   padding: 12px;
-  background: oklch(0.15 0.02 250);
+  background: var(--pasty-surface, transparent);
+  border: 1px solid var(--pasty-border, transparent);
   border-radius: 4px;
   font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 12px;
@@ -326,7 +342,7 @@ onBeforeUnmount(() => {
   max-height: 360px;
   overflow: auto;
   white-space: pre;
-  color: oklch(0.78 0.02 250);
+  color: var(--pasty-text-primary, inherit);
 }
 
 /* Empty state */
@@ -334,7 +350,7 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 8px 4px;
   font-size: 12px;
-  color: oklch(0.55 0.02 250);
+  color: var(--pasty-text-tertiary, inherit);
 }
 
 /* Accessibility: visually hidden live region */
