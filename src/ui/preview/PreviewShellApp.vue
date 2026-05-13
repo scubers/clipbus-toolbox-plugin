@@ -2,18 +2,10 @@
   <main class="workbench" :data-theme="selectedTheme">
     <section class="workbench__controls">
       <label class="workbench__control">
-        <span>View</span>
-        <select v-model="selectedView">
-          <option value="renderer">Renderer</option>
-          <option value="action">Action</option>
-        </select>
-      </label>
-
-      <label class="workbench__control">
         <span>Scenario</span>
         <select v-model="selectedScenarioID">
           <option
-            v-for="scenario in activeScenarioOptions"
+            v-for="scenario in attachmentScenarios"
             :key="scenario.id"
             :value="scenario.id"
           >
@@ -32,12 +24,9 @@
     </section>
 
     <section class="workbench__canvas">
-      <div
-        class="host-frame"
-        :class="selectedView === 'renderer' ? 'host-frame--renderer' : 'host-frame--action'"
-      >
+      <div class="host-frame host-frame--renderer">
         <div class="host-frame__title">
-          <span>{{ selectedView === "renderer" ? "Attachment Renderer" : "Draft Action" }}</span>
+          <span>Attachment Renderer</span>
           <span>{{ frameSizeLabel }}</span>
         </div>
 
@@ -45,7 +34,7 @@
           <div class="host-frame__viewport-shell">
             <div class="host-frame__viewport" :style="viewportStyle">
               <div class="host-frame__webview">
-                <component :is="activeComponent" :key="componentKey" />
+                <AttachmentDecodeApp :key="componentKey" />
               </div>
             </div>
 
@@ -67,6 +56,7 @@
               class="host-frame__button"
               type="button"
               :class="button.id === activeDefaultButtonID ? 'host-frame__button--primary' : ''"
+              :disabled="button.isEnabled === false"
               @click="previewHostButton(button)"
             >
               {{ button.title }}
@@ -78,10 +68,11 @@
       <aside class="workbench__notes">
         <p class="workbench__notes-title">Preview Notes</p>
         <p class="workbench__notes-body">
-          This workbench simulates host chrome, theme changes, and bootstrap/search/theme events.
+          This workbench simulates host chrome and theme changes for the decode renderer.
+          Each scenario hand-mirrors a payload produced by the runtime detector.
         </p>
         <p class="workbench__notes-body">
-          Use the host resize control below the preview viewport. In local preview, bridge calls fall back to console logging.
+          Use the host resize control below the preview viewport. Bridge calls fall back to console logging in local preview.
         </p>
         <p class="workbench__notes-status">{{ statusMessage }}</p>
       </aside>
@@ -91,77 +82,38 @@
 
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
-import AttachmentTemplateApp from "../AttachmentTemplateApp.vue";
-import ExpandedAttachmentTemplateApp from "../ExpandedAttachmentTemplateApp.vue";
-import DraftActionTemplateApp from "../DraftActionTemplateApp.vue";
+import AttachmentDecodeApp from "../AttachmentDecodeApp.vue";
 import { attachmentScenarios } from "./scenarios/attachmentScenarios";
-import { actionScenarios } from "./scenarios/actionScenarios";
-
-const attachmentComponentMap = {
-  compact: AttachmentTemplateApp,
-  expanded: ExpandedAttachmentTemplateApp
-};
 
 const query = new URLSearchParams(window.location.search);
-const initialView = query.get("view") === "action" ? "action" : "renderer";
-const selectedView = ref(initialView);
 const selectedTheme = ref(query.get("theme") === "light" ? "light" : "dark");
 const statusMessage = ref("Ready for local UI iteration.");
 
-const activeScenarioOptions = computed(() => selectedView.value === "renderer"
-  ? attachmentScenarios
-  : actionScenarios);
+const selectedScenarioID = ref(resolveInitialScenarioID());
 
-const selectedScenarioID = ref(resolveInitialScenarioID(initialView));
-
-const activeScenario = computed(() => activeScenarioOptions.value.find(
+const activeScenario = computed(() => attachmentScenarios.find(
   (scenario) => scenario.id === selectedScenarioID.value
-) || activeScenarioOptions.value[0]);
-
-const activeComponent = computed(() => {
-  if (selectedView.value !== "renderer") {
-    return DraftActionTemplateApp;
-  }
-  const variant = activeScenario.value?.rendererComponent ?? "compact";
-  return attachmentComponentMap[variant] ?? AttachmentTemplateApp;
-});
+) || attachmentScenarios[0]);
 
 const activeButtons = computed(() => activeScenario.value?.bootstrap?.buttons ?? []);
 const activeDefaultButtonID = computed(() => activeScenario.value?.bootstrap?.defaultButtonID ?? null);
 
-const componentKey = computed(() => `${selectedView.value}:${activeScenario.value?.id ?? "unknown"}`);
+const componentKey = computed(() => `renderer:${activeScenario.value?.id ?? "unknown"}`);
 
-const minimumViewportSizes = {
-  renderer: { width: 320, height: 220 },
-  action: { width: 320, height: 220 }
-};
+const minimumViewportSize = { width: 320, height: 220 };
+const viewportSize = reactive({ width: 560, height: 320 });
 
-const viewportSizes = reactive({
-  renderer: { width: 560, height: 320 },
-  action: { width: 350, height: 250 }
-});
+const viewportStyle = computed(() => ({
+  width: `${viewportSize.width}px`,
+  height: `${viewportSize.height}px`
+}));
 
-const viewportStyle = computed(() => {
-  const size = viewportSizes[selectedView.value];
-  return {
-    width: `${size.width}px`,
-    height: `${size.height}px`
-  };
-});
-
-const frameSizeLabel = computed(() => {
-  const size = viewportSizes[selectedView.value];
-  return `${size.width} × ${size.height}`;
-});
+const frameSizeLabel = computed(() => `${viewportSize.width} × ${viewportSize.height}`);
 
 let resizeSession = null;
 
-watch(selectedView, (view) => {
-  selectedScenarioID.value = resolveInitialScenarioID(view);
-});
-
 watch(
-  [selectedView, selectedScenarioID, selectedTheme],
+  [selectedScenarioID, selectedTheme],
   () => {
     applyPreviewState();
     syncQuery();
@@ -169,12 +121,11 @@ watch(
   { immediate: true }
 );
 
-function resolveInitialScenarioID(view) {
+function resolveInitialScenarioID() {
   const requestedScenarioID = query.get("scenario");
-  const options = view === "renderer" ? attachmentScenarios : actionScenarios;
-  return options.some((scenario) => scenario.id === requestedScenarioID)
+  return attachmentScenarios.some((scenario) => scenario.id === requestedScenarioID)
     ? requestedScenarioID
-    : options[0].id;
+    : attachmentScenarios[0].id;
 }
 
 function clone(value) {
@@ -192,34 +143,26 @@ function applyPreviewState() {
   }
 
   const bootstrap = clone(scenario.bootstrap);
-  window.__PASTY_PLUGIN_BOOTSTRAP__ = null;
+  window.__PASTY_PLUGIN_BOOTSTRAP__ = bootstrap;
   window.__PASTY_PLUGIN_ACTION_BOOTSTRAP__ = null;
 
-  if (selectedView.value === "renderer") {
-    window.__PASTY_PLUGIN_BOOTSTRAP__ = bootstrap;
-    dispatchEvent("pasty-plugin-bootstrap", bootstrap);
-    dispatchEvent("pasty-plugin-attachment-updated", {
-      item: bootstrap.item,
-      attachment: bootstrap.attachment
-    });
-    dispatchEvent("pasty-plugin-search-updated", {
-      searchTerms: scenario.searchTerms ?? []
-    });
-    dispatchEvent("pasty-plugin-theme-updated", {
-      accentHex: scenario.accentHex ?? null
-    });
-    statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
-    return;
-  }
-
-  window.__PASTY_PLUGIN_ACTION_BOOTSTRAP__ = bootstrap;
-  dispatchEvent("pasty-plugin-action-bootstrap", bootstrap);
-  statusMessage.value = `Action preview loaded: ${scenario.label}`;
+  dispatchEvent("pasty-plugin-bootstrap", bootstrap);
+  dispatchEvent("pasty-plugin-attachment-updated", {
+    item: bootstrap.item,
+    attachment: bootstrap.attachment
+  });
+  dispatchEvent("pasty-plugin-search-updated", {
+    searchTerms: scenario.searchTerms ?? []
+  });
+  dispatchEvent("pasty-plugin-theme-updated", {
+    accentHex: scenario.accentHex ?? null
+  });
+  statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
 }
 
 function syncQuery() {
   const next = new URL(window.location.href);
-  next.searchParams.set("view", selectedView.value);
+  next.searchParams.set("view", "renderer");
   next.searchParams.set("scenario", selectedScenarioID.value);
   next.searchParams.set("theme", selectedTheme.value);
   window.history.replaceState({}, "", next);
@@ -228,7 +171,6 @@ function syncQuery() {
 function previewHostButton(button) {
   statusMessage.value = `Host preview button clicked: ${button.title}`;
   console.info("preview.hostButton", {
-    view: selectedView.value,
     scenarioID: selectedScenarioID.value,
     buttonID: button.id
   });
@@ -238,13 +180,11 @@ function startResize(event) {
   event.preventDefault();
   stopResize();
 
-  const view = selectedView.value;
   resizeSession = {
-    view,
     startPointerX: event.clientX,
     startPointerY: event.clientY,
-    startWidth: viewportSizes[view].width,
-    startHeight: viewportSizes[view].height
+    startWidth: viewportSize.width,
+    startHeight: viewportSize.height
   };
 
   window.addEventListener("pointermove", handleResizePointerMove);
@@ -264,15 +204,14 @@ function handleResizePointerMove(event) {
     return;
   }
 
-  const { view, startPointerX, startPointerY, startWidth, startHeight } = resizeSession;
-  const minimumSize = minimumViewportSizes[view];
+  const { startPointerX, startPointerY, startWidth, startHeight } = resizeSession;
 
-  viewportSizes[view].width = Math.max(
-    minimumSize.width,
+  viewportSize.width = Math.max(
+    minimumViewportSize.width,
     Math.round(startWidth + (event.clientX - startPointerX))
   );
-  viewportSizes[view].height = Math.max(
-    minimumSize.height,
+  viewportSize.height = Math.max(
+    minimumViewportSize.height,
     Math.round(startHeight + (event.clientY - startPointerY))
   );
 }
@@ -447,6 +386,11 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.host-frame__button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .host-frame__button--primary {

@@ -1,8 +1,8 @@
 {
-  "name": "@pasty/template-plugin",
+  "name": "@pasty/awesome-decode",
   "private": true,
   "version": "0.1.0",
-  "description": "Source-based template plugin for Pasty detector, renderer, and action authoring.",
+  "description": "Pasty v2 plugin that auto-decodes Base64 / URL / Escaped JSON / JWT clipboard strings into a preview card.",
   "engines": { "node": ">=18.0.0" },
   "scripts": {
     "clean": "rm -rf dist",

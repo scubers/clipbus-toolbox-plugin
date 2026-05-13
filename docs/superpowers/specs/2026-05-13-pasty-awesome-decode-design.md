@@ -190,16 +190,26 @@ manifest 路径解析：
 
 #### 4.2.2 Escaped JSON 字符串
 
-匹配条件：
+两条平行路径，任一命中即视为 escaped JSON。
+
+**Path A —— 完整 JSON 字符串字面量**（外层带引号）：
 
 - 字符串以 `"` 开头且以 `"` 结尾
 - 整体 `JSON.parse(input)` 成功且返回值是 `string`
+- 命中后 `decoded = <解出的 string>`
 
-命中后输出：
+**Path B —— 外层引号被剥掉的 escaped JSON 内容**（典型场景：从 log 里复制的字符串）：
+
+- 输入包含 `\"`（反斜杠+引号字面序列，作为转义信号）
+- `JSON.parse('"' + input + '"')` 成功（用反转义把 `\n` / `\"` / `\\` 等还原）
+- 反转义结果再用 `JSON.parse(...)` 一次，且结果是 **object 或 array**（拦截 `\"hello\"` 这类"解出来是字符串"的伪命中）
+- 命中后 `decoded = <反转义后的字符串>`
+
+Path A 先尝试；若 Path A 不命中再走 Path B。共同输出：
 
 - `encoding: "escaped_json"`
-- `decoded: <解出的 string>`
-- `decodedIsJSON`: 再用 `JSON.parse(decoded)` 试一次，成功为 `true`
+- `decoded: <见上>`
+- `decodedIsJSON`: 用 `JSON.parse(decoded)` 试一次，成功为 `true`（Path B 命中时此值恒为 `true`）
 
 #### 4.2.3 URL encoding
 
@@ -266,36 +276,35 @@ manifest 路径解析：
 
 ## 5. Renderer UI
 
-### 5.1 卡片布局
+### 5.1 布局（扁平化，无内嵌卡片）
+
+宿主已经在 attachment 区域外层提供卡片容器和操作按钮条，**webview 内部不再绘制卡片框架，也不渲染按钮**，只负责呈现内容。
 
 ```
-┌───────────────────────────────────────────────────┐
-│ [encoding 徽章]                                    │  ← 顶部一行：编码类型徽章
-├───────────────────────────────────────────────────┤
-│ Decoded                                            │  ← 主体：decoded 内容
-│ ┌─────────────────────────────────────────────┐   │     - 等宽字体
-│ │ <decoded 文本，可滚动 / 折行>               │   │     - 高度由 autoFit 控制
-│ │                                              │   │     - JWT 时分 Header / Payload
-│ └─────────────────────────────────────────────┘   │
-├───────────────────────────────────────────────────┤
-│  [Copy Decoded]   [Copy as JSON]                  │  ← 底部：两个按钮
-└───────────────────────────────────────────────────┘
+[encoding 徽章]                          originalLen → decodedLen
+
+<decoded 文本，可滚动 / 折行>
+- 等宽字体
+- JWT 时分 Header / Payload 两段，各带 sub-header
+- 高度由 autoFit 控制
 ```
 
-不在卡片顶部展示原文预览（decoded 主体本身就是预览）。
+不在顶部展示原文预览（decoded 主体本身就是预览）。背景透明、无 border、无 shadow —— 让宿主的卡片框架透过来。
 
 ### 5.2 JWT 特殊布局
 
-主体区域分两段，浅色 sub-header 分别标 `Header` / `Payload`，各自展示 pretty-print 后的 JSON（用等宽字体 + 语法高亮可选 v1.1 再做）。Signature 段不展示。
+主体区域分两段，浅色 sub-header 分别标 `Header` / `Payload`，各自展示 pretty-print 后的 JSON（等宽字体 + 语法高亮可选 v1.1 再做）。Signature 段不展示。
 
-### 5.3 按钮行为
+### 5.3 按钮（由宿主渲染，**不在 webview 里**）
+
+按钮的呈现责任完全在宿主。runtime 通过 `resolveAttachment` 返回 buttons 数组告诉宿主要画什么；用户点击宿主的按钮后，宿主把 click 事件转回 runtime 的 `invokeOperation`。
 
 | 按钮 ID | 显示 | enabled | 点击 |
 |---|---|---|---|
 | `copy-decoded` | Copy Decoded | 始终启用 | 复制 `payload.decoded`（JWT 即 `{header,payload}` 整段 JSON） |
 | `copy-json` | Copy as JSON | 仅 `decodedIsJSON === true` 或 `encoding === "jwt"` | 对 `payload.decoded` 做 `JSON.parse` 后 `JSON.stringify(_, null, 2)` 复制 |
 
-按钮由 runtime `resolveAttachment` 返回，runtime `invokeOperation` 按 `buttonID` 分发到 `ctx.host.clipboard.copyText(...)`。
+webview UI 组件不订阅按钮、不渲染按钮、不处理 click，避免与宿主重复。
 
 ### 5.4 反馈
 
@@ -304,15 +313,15 @@ manifest 路径解析：
 
 ### 5.5 主题适配
 
-- 12 个 `--pasty-*` CSS token 全部使用，覆盖背景、文字、徽章 tint、按钮、分隔线
+- 12 个 `--pasty-*` CSS token 全部使用，覆盖文字、徽章 tint 等（背景留透明走宿主）
 - 不订阅 `pasty.theme.on()`（不画 canvas）
 - 依赖宿主注入的 `color-scheme: light dark`，自动跟随主题
 
 ### 5.6 高度策略
 
-- manifest `height: { min: 100, max: 480 }`
-- UI 启动后调 `await pasty.window.autoFit({ min: 100, max: 480 })`，dispose 在 Vue `onBeforeUnmount` 调用
-- 主体内容滚动条由 UI 内部容器负责，autoFit 只调整整张卡片高度上限
+- manifest `height: { min: 60, max: 480 }`（按钮已下移到宿主，最小可更低）
+- UI 启动后调 `await pasty.window.autoFit({ min: 60, max: 480 })`，dispose 在 Vue `onBeforeUnmount` 调用
+- 主体内容自然撑高，autoFit 调整整张卡片高度
 
 ## 6. 边界与失败处理
 

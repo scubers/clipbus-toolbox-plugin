@@ -11,25 +11,11 @@ const uiOutputRoot = path.resolve(projectRoot, "dist/ui");
 
 const pages = [
   {
-    name: "template-renderer",
+    name: "decode-renderer",
     kind: "renderers",
-    globalName: "PastyTemplatePluginRenderer",
-    entry: path.resolve(projectRoot, "src/ui/renderers/template-renderer/main.js"),
-    template: path.resolve(projectRoot, "src/ui/renderers/template-renderer/index.html")
-  },
-  {
-    name: "template-expanded-renderer",
-    kind: "renderers",
-    globalName: "PastyTemplatePluginExpandedRenderer",
-    entry: path.resolve(projectRoot, "src/ui/renderers/template-expanded-renderer/main.js"),
-    template: path.resolve(projectRoot, "src/ui/renderers/template-expanded-renderer/index.html")
-  },
-  {
-    name: "template-draft-action",
-    kind: "actions",
-    globalName: "PastyTemplatePluginDraftAction",
-    entry: path.resolve(projectRoot, "src/ui/actions/template-draft-action/main.js"),
-    template: path.resolve(projectRoot, "src/ui/actions/template-draft-action/index.html")
+    globalName: "PastyAwesomeDecodeRenderer",
+    entry: path.resolve(projectRoot, "src/ui/renderers/decode-renderer/main.js"),
+    template: path.resolve(projectRoot, "src/ui/renderers/decode-renderer/index.html")
   }
 ];
 
