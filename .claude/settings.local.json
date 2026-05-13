@@ -3,5 +3,8 @@
     "allow": [
       "Bash(node -e ' *)"
     ]
+  },
+  "enabledPlugins": {
+    "oh-my-claudecode@omc": true
   }
 }
