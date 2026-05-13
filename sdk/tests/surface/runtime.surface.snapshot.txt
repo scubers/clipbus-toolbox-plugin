@@ -1,0 +1,6 @@
+actionResult.image: function/1
+actionResult.none: function/0
+actionResult.text: function/1
+definePlugin: function/1
+rendererResult.failure: function/1
+rendererResult.success: function/0
