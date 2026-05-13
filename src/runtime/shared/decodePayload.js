@@ -44,20 +44,29 @@ function createDecodePayload(detectionResult) {
   if (!ENCODING_LABELS[encoding]) {
     return null;
   }
-  const decoded = String(detectionResult.decoded ?? "");
   const original = String(detectionResult.original ?? "");
 
   const { value: originalForPayload, truncated } = truncateOriginal(original);
 
-  const decodedIsJSON =
-    encoding === "jwt" ? true : isJsonString(decoded);
-
   const jwt = encoding === "jwt" && detectionResult.jwt
     ? {
         header: detectionResult.jwt.header,
-        payload: detectionResult.jwt.payload
+        payload: detectionResult.jwt.payload,
+        signature: detectionResult.jwt.signature ?? ""
       }
     : null;
+
+  const decoded =
+    encoding === "jwt" && jwt
+      ? JSON.stringify(
+          { header: jwt.header, payload: jwt.payload, signature: jwt.signature },
+          null,
+          2
+        )
+      : String(detectionResult.decoded ?? "");
+
+  const decodedIsJSON =
+    encoding === "jwt" ? true : isJsonString(decoded);
 
   return {
     kind: "decode_preview",
@@ -104,7 +113,12 @@ function decodeDecodePayload(payloadJson) {
     truncated: Boolean(parsed.truncated),
     decoded: parsed.decoded,
     decodedIsJSON: Boolean(parsed.decodedIsJSON),
-    jwt: isPlainObject(parsed.jwt) ? parsed.jwt : null,
+    jwt: isPlainObject(parsed.jwt)
+      ? {
+          ...parsed.jwt,
+          signature: typeof parsed.jwt.signature === "string" ? parsed.jwt.signature : ""
+        }
+      : null,
     originalLength: Number(parsed.originalLength) || 0,
     decodedLength: Number(parsed.decodedLength) || 0,
     // Forward-compat: older payloads without `expanded` default to compact.

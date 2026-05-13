@@ -53,18 +53,16 @@ function captureClipboardCtx() {
 
 // ─── resolveAttachment ──────────────────────────────────────────────────────
 
-test("resolveAttachment returns Copy Decoded enabled + Copy as JSON disabled for plain Base64", () => {
+test("resolveAttachment returns Copy + toggle-expand for plain Base64 (no Copy as JSON)", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({
     attachment: { payloadJson: buildPayloadJson({ encoding: "base64", decodedIsJSON: false }) }
   });
   assert.ok(out.displayName);
   const buttonIDs = out.buttons.map((b) => b.id);
-  assert.deepEqual(buttonIDs, ["copy-decoded", "copy-json", "toggle-expand"]);
+  assert.deepEqual(buttonIDs, ["copy-decoded", "toggle-expand"]);
   const copyDecoded = out.buttons.find((b) => b.id === "copy-decoded");
-  const copyJson = out.buttons.find((b) => b.id === "copy-json");
-  assert.equal(copyDecoded.isEnabled, true);
-  assert.equal(copyJson.isEnabled, false);
+  assert.equal(copyDecoded.title, "Copy");
 });
 
 test("resolveAttachment does not set encoding-specific tintHex (host accent applies)", () => {
@@ -88,7 +86,6 @@ test("resolveAttachment toggle-expand title reflects payload.expanded flag", () 
   const toggleCollapsed = collapsed.buttons.find((b) => b.id === "toggle-expand");
   assert.ok(toggleCollapsed);
   assert.equal(toggleCollapsed.title, "Show More");
-  assert.equal(toggleCollapsed.isEnabled, true);
 
   const expanded = resolveAttachment({
     attachment: { payloadJson: buildPayloadJson({ expanded: true }) }
@@ -96,19 +93,18 @@ test("resolveAttachment toggle-expand title reflects payload.expanded flag", () 
   const toggleExpanded = expanded.buttons.find((b) => b.id === "toggle-expand");
   assert.ok(toggleExpanded);
   assert.equal(toggleExpanded.title, "Show Less");
-  assert.equal(toggleExpanded.isEnabled, true);
 });
 
-test("resolveAttachment enables Copy as JSON when decodedIsJSON is true", () => {
+test("resolveAttachment includes Copy as JSON when decodedIsJSON is true", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({
     attachment: { payloadJson: buildPayloadJson({ encoding: "base64", decodedIsJSON: true }) }
   });
   const copyJson = out.buttons.find((b) => b.id === "copy-json");
-  assert.equal(copyJson.isEnabled, true);
+  assert.ok(copyJson, "copy-json button should be present");
 });
 
-test("resolveAttachment enables Copy as JSON for JWT regardless of decodedIsJSON flag", () => {
+test("resolveAttachment includes Copy as JSON for JWT regardless of decodedIsJSON flag", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({
     attachment: {
@@ -121,10 +117,10 @@ test("resolveAttachment enables Copy as JSON for JWT regardless of decodedIsJSON
     }
   });
   const copyJson = out.buttons.find((b) => b.id === "copy-json");
-  assert.equal(copyJson.isEnabled, true);
+  assert.ok(copyJson, "copy-json button should be present for JWT");
 });
 
-test("resolveAttachment for URL with non-JSON decoded leaves Copy as JSON disabled", () => {
+test("resolveAttachment for URL with non-JSON decoded omits Copy as JSON button", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({
     attachment: {
@@ -136,10 +132,10 @@ test("resolveAttachment for URL with non-JSON decoded leaves Copy as JSON disabl
     }
   });
   const copyJson = out.buttons.find((b) => b.id === "copy-json");
-  assert.equal(copyJson.isEnabled, false);
+  assert.equal(copyJson, undefined);
 });
 
-test("resolveAttachment for Escaped JSON with inner-JSON enables Copy as JSON", () => {
+test("resolveAttachment for Escaped JSON with inner-JSON includes Copy as JSON", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({
     attachment: {
@@ -151,16 +147,14 @@ test("resolveAttachment for Escaped JSON with inner-JSON enables Copy as JSON", 
     }
   });
   const copyJson = out.buttons.find((b) => b.id === "copy-json");
-  assert.equal(copyJson.isEnabled, true);
+  assert.ok(copyJson, "copy-json button should be present");
 });
 
-test("resolveAttachment returns failure-state buttons when payloadJson is invalid", () => {
+test("resolveAttachment returns empty buttons array when payloadJson is invalid", () => {
   const { resolveAttachment } = loadRenderer();
   const out = resolveAttachment({ attachment: { payloadJson: "not-json" } });
   assert.ok(Array.isArray(out.buttons));
-  for (const button of out.buttons) {
-    assert.equal(button.isEnabled, false);
-  }
+  assert.equal(out.buttons.length, 0);
 });
 
 test("invokeOperation toggle-expand flips expanded flag via setAttachments", async () => {

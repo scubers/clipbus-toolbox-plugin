@@ -30,7 +30,8 @@ function tryDecodeJWT(input) {
   if (typeof input !== "string" || !JWT_REGEX.test(input)) {
     return null;
   }
-  const [headerSeg, payloadSeg /* signature segment ignored */] = input.split(".");
+  const segments = input.split(".");
+  const [headerSeg, payloadSeg] = segments;
 
   const headerBuf = base64UrlDecodeToBuffer(headerSeg);
   const payloadBuf = base64UrlDecodeToBuffer(payloadSeg);
@@ -39,7 +40,6 @@ function tryDecodeJWT(input) {
   }
 
   // Spec: third segment must "successfully Base64URL decode" — we verify it.
-  const segments = input.split(".");
   if (segments[2] !== undefined && segments[2] !== "") {
     const sigBuf = base64UrlDecodeToBuffer(segments[2]);
     if (!sigBuf) {
@@ -80,7 +80,8 @@ function tryDecodeJWT(input) {
 
   return {
     header,
-    payload: payloadParse.value
+    payload: payloadParse.value,
+    signature: segments[2] ?? ""
   };
 }
 

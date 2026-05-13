@@ -1,49 +1,79 @@
 <template>
-  <main class="decode-shell">
-    <template v-if="payload">
-      <header class="decode-header">
-        <span
-          class="decode-badge"
-          :class="`decode-badge--${payload.encoding}`"
-        >{{ encodingLabel }}</span>
-        <span class="decode-sizes" aria-hidden="true">
-          {{ payload.originalLength }} → {{ payload.decodedLength }}
-        </span>
-      </header>
+  <div class="decode-shell">
+    <div
+      v-if="payload"
+      class="decode-panel"
+      :class="`decode-panel--${encoding}`"
+    >
+      <!-- Row: always visible -->
+      <div class="decode-row" @click="onToggle">
+        <span class="chip" :class="`chip--${encoding}`">{{ encodingLabel }}</span>
 
-      <section
-        class="decode-body"
-        :class="{ 'decode-body--compact': !isExpanded }"
-      >
-        <template v-if="payload.encoding === 'jwt' && payload.jwt">
-          <div class="decode-section">
-            <p class="decode-section-label">Header</p>
-            <pre class="decode-code">{{ headerPretty }}</pre>
-          </div>
-          <div class="decode-section">
-            <p class="decode-section-label">Payload</p>
-            <pre class="decode-code">{{ payloadPretty }}</pre>
-          </div>
-        </template>
-        <template v-else>
-          <pre class="decode-code">{{ bodyText }}</pre>
-        </template>
-        <div
-          v-if="!isExpanded"
-          class="decode-body__fade"
-          aria-hidden="true"
-        />
-      </section>
-    </template>
+        <span class="preview" :title="previewText">{{ previewText }}</span>
+
+        <!-- Inline copy -->
+        <button
+          type="button"
+          class="icon-btn"
+          :aria-label="copied ? 'Copied' : 'Copy decoded'"
+          @click.stop="onCopy"
+        >
+          <!-- Check icon -->
+          <svg v-if="copied" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <!-- Copy icon -->
+          <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        </button>
+
+        <!-- Chevron toggle -->
+        <button
+          type="button"
+          class="icon-btn"
+          :aria-label="expanded ? 'Collapse' : 'Expand'"
+          :aria-expanded="expanded"
+          @click.stop="onToggle"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            :class="{ 'chevron-rotated': expanded }"
+            aria-hidden="true"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Expanded code block -->
+      <pre
+        v-if="expanded"
+        class="code"
+        v-html="renderedDecoded"
+      />
+    </div>
 
     <p v-else class="decode-empty">No decoded payload available.</p>
-  </main>
+
+    <!-- Accessibility live region -->
+    <span aria-live="polite" class="sr-only">{{ copied ? "Copied" : "" }}</span>
+  </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { pasty } from "@pasty/plugin-sdk/ui";
 import { usePluginAttachmentSession } from "./composables/usePluginAttachmentSession";
+import { highlightJson } from "./shared/jsonHighlight.js";
 
 const ENCODING_LABELS = {
   jwt: "JWT",
@@ -57,14 +87,8 @@ const MAX_HEIGHT = 480;
 
 const { payload } = usePluginAttachmentSession();
 
-// Local UI state for compact/expanded. Initialized from payload.expanded
-// (so a freshly-bootstrapped attachment that already has expanded=true
-// renders correctly), then driven directly by the host's renderer-action
-// event. This decouples the UI from the round-trip through runtime
-// invokeOperation → setAttachments → host broadcast, which some host
-// versions don't push back to the same webview.
 const localExpanded = ref(false);
-const isExpanded = computed(() => localExpanded.value);
+const copied = ref(false);
 
 watch(
   () => payload.value?.expanded,
@@ -74,61 +98,47 @@ watch(
   { immediate: true }
 );
 
-const encodingLabel = computed(
-  () => ENCODING_LABELS[payload.value?.encoding] || ""
-);
+const expanded = computed(() => localExpanded.value);
+const encoding = computed(() => payload.value?.encoding ?? "");
+const encodingLabel = computed(() => ENCODING_LABELS[encoding.value] || encoding.value);
 
-function safeStringify(value) {
+// Preview: flatten whitespace, ellipsis via CSS
+const previewText = computed(() => {
+  const t = payload.value?.decoded ?? "";
+  return t.replace(/\s+/g, " ").trim();
+});
+
+// Highlighted or plain-escaped decoded content
+const renderedDecoded = computed(() => {
+  const text = payload.value?.decoded ?? "";
+  const isJson =
+    payload.value?.encoding === "jwt" || payload.value?.decodedIsJSON === true;
+  if (isJson) return highlightJson(text);
+  return text.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
+  );
+});
+
+// --- Copy ---
+async function onCopy() {
+  if (!payload.value) return;
   try {
-    return JSON.stringify(value, null, 2);
+    await navigator.clipboard.writeText(payload.value.decoded);
+    copied.value = true;
+    setTimeout(() => {
+      copied.value = false;
+    }, 1200);
   } catch {
-    return "";
+    /* swallow: clipboard permission denied etc. */
   }
 }
 
-const headerPretty = computed(() => safeStringify(payload.value?.jwt?.header ?? null));
-const payloadPretty = computed(() => safeStringify(payload.value?.jwt?.payload ?? null));
-const bodyText = computed(() => payload.value?.decoded ?? "");
-
-let disposeAutoFit = null;
-let unsubHostInvoke = null;
-
-// AutoFit must observe an inner content element (NOT document.body): some
-// hosts size body to the viewport (height: 100%), pinning body.scrollHeight
-// to the viewport height even when content overflows. We observe the
-// .decode-shell <main> so growth AND shrink are tracked. The element is
-// rendered with v-if="payload" so we have to wait until payload arrives.
-async function attachAutoFitIfReady() {
-  if (disposeAutoFit || !payload.value) return;
-  await nextTick();
-  const target = document.querySelector(".decode-shell");
-  if (!target) return;
-  try {
-    disposeAutoFit = pasty.window.autoFit({
-      min: MIN_HEIGHT,
-      max: MAX_HEIGHT,
-      target
-    });
-  } catch (error) {
-    if (typeof console !== "undefined") {
-      console.warn("[decode-renderer] autoFit failed:", error);
-    }
-  }
-}
-
-// Host-initiated button clicks fire `pasty-plugin-renderer-action` which the
-// SDK turns into this stream. Handle `toggle-expand` directly in the webview
-// so the layout flip is instant and doesn't depend on the runtime's
-// setAttachments round-trip making it back to this WebView.
-async function handleHostAction(detail) {
-  if (detail?.actionID !== "toggle-expand") return;
+// --- Toggle expand (webview-initiated) ---
+async function onToggle() {
   const next = !localExpanded.value;
   localExpanded.value = next;
 
-  // Persist back into the attachment so the host can re-fetch
-  // resolveAttachment and flip the native button title between
-  // "Show More" / "Show Less". Best-effort: if the host's setAttachments
-  // bridge isn't available (e.g. dev preview), the content still toggles.
   const current = pasty.item.attachment.current();
   if (!current) return;
   let parsed;
@@ -149,17 +159,50 @@ async function handleHostAction(detail) {
         }
       ]
     });
+  } catch (e) {
+    if (typeof console !== "undefined") {
+      console.warn("[decode-renderer] setAttachments failed:", e);
+    }
+  }
+}
+
+// --- Host-initiated toggle ---
+// The native button click runs runtime.invokeOperation which calls
+// setAttachments → payload.expanded eventually echoes back through the watcher.
+// We anticipate the new value (derived from current payload, not local state)
+// for immediate UI response without depending on round-trip timing. If the
+// echo arrives later with the same value, the watcher assignment is a no-op
+// (Vue ref skips identical primitive writes), so no double-flip risk.
+function handleHostAction(detail) {
+  if (detail?.actionID !== "toggle-expand") return;
+  const current = payload.value?.expanded === true;
+  localExpanded.value = !current;
+}
+
+// --- AutoFit ---
+let disposeAutoFit = null;
+let unsubHostInvoke = null;
+
+async function attachAutoFitIfReady() {
+  if (disposeAutoFit || !payload.value) return;
+  await nextTick();
+  const target = document.querySelector(".decode-panel");
+  if (!target) return;
+  try {
+    disposeAutoFit = pasty.window.autoFit({
+      min: MIN_HEIGHT,
+      max: MAX_HEIGHT,
+      target
+    });
   } catch (error) {
     if (typeof console !== "undefined") {
-      console.warn("[decode-renderer] setAttachments failed:", error);
+      console.warn("[decode-renderer] autoFit failed:", error);
     }
   }
 }
 
 onMounted(() => {
   unsubHostInvoke = pasty.item.attachment.onHostInvoke(handleHostAction);
-  // Attach autoFit when the payload first becomes truthy (the wrapping
-  // element only exists at that point).
   watch(payload, attachAutoFitIfReady, { immediate: true });
 });
 
@@ -175,117 +218,132 @@ onBeforeUnmount(() => {
 });
 </script>
 
+<!-- Global: jh-* spans are injected via v-html and won't match scoped selectors -->
+<style>
+.jh-key    { color: oklch(0.82 0.18 145); }
+.jh-string { color: oklch(0.92 0.04 80);  }
+.jh-number { color: oklch(0.78 0.15 50);  }
+.jh-bool   { color: oklch(0.75 0.15 230); }
+.jh-null   { color: oklch(0.70 0.15 25);  }
+.jh-punct  { color: oklch(0.55 0.02 250); }
+</style>
+
 <style scoped>
+/* Outer shell: transparent so host theme shows through */
 .decode-shell {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 4px;
-  color: var(--pasty-text-primary, #0f172a);
   background: transparent;
+  padding: 0;
+  margin: 0;
 }
 
-.decode-header {
+/* Fixed dark panel — independent of host theme */
+.decode-panel {
+  background: oklch(0.18 0.02 250);
+  border-radius: 8px;
+  padding: 8px;
+  margin: 0;
+}
+
+/* Row: always visible */
+.decode-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 0 4px 8px;
-  border-bottom: 1px solid var(--pasty-divider, rgba(148, 163, 184, 0.24));
+  cursor: pointer;
+  height: 32px;
+  min-height: 32px;
+  user-select: none;
 }
 
-.decode-badge {
+/* Chip */
+.chip {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--pasty-accent-contrast, #ffffff);
-  background: var(--pasty-accent, #2563eb);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
+  white-space: nowrap;
+  flex-shrink: 0;
+  background: oklch(0.32 0.10 var(--chip-hue));
+  color:      oklch(0.92 0.18 var(--chip-hue));
 }
+.chip--jwt          { --chip-hue: 290; }
+.chip--escaped_json { --chip-hue: 145; }
+.chip--url          { --chip-hue: 220; }
+.chip--base64       { --chip-hue: 30;  }
 
-.decode-sizes {
-  font-size: 11px;
-  color: var(--pasty-text-tertiary, #64748b);
-  font-variant-numeric: tabular-nums;
-}
-
-.decode-body {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 4px;
-}
-
-.decode-body--compact {
-  max-height: 120px;
+/* Preview text */
+.preview {
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
+  font-size: 12px;
+  color: oklch(0.78 0.02 250);
 }
 
-.decode-body__fade {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 48px;
-  pointer-events: none;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--pasty-surface, rgba(255, 255, 255, 0.96))
-  );
-}
-
-.decode-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding-left: 8px;
-  border-left: 2px solid var(--pasty-accent, #2563eb);
-}
-
-.decode-section-label {
-  margin: 0;
+/* Icon buttons */
+.icon-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #64748b);
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 4px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  color: oklch(0.62 0.02 250);
+  transition: background 0.1s;
+}
+.icon-btn:hover {
+  background: oklch(1 0 0 / 0.08);
 }
 
-.decode-section-label::before {
-  content: "";
-  display: inline-block;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--pasty-accent, #2563eb);
+/* Chevron rotation for expanded state */
+.chevron-rotated {
+  transform: rotate(180deg);
+  transition: transform 0.15s;
 }
 
-.decode-code {
-  margin: 0;
-  padding: 0;
+/* Expanded code block */
+.code {
+  margin-top: 8px;
+  margin-bottom: 0;
+  padding: 12px;
+  background: oklch(0.15 0.02 250);
+  border-radius: 4px;
   font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 12px;
   line-height: 1.45;
-  white-space: pre-wrap;
-  word-break: break-all;
-  color: var(--pasty-text-primary, #0f172a);
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre;
+  color: oklch(0.78 0.02 250);
 }
 
+/* Empty state */
 .decode-empty {
   margin: 0;
   padding: 8px 4px;
   font-size: 12px;
-  color: var(--pasty-text-tertiary, #64748b);
+  color: oklch(0.55 0.02 250);
+}
+
+/* Accessibility: visually hidden live region */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 </style>

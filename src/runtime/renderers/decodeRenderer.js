@@ -10,14 +10,16 @@ const ATTACHMENT_TYPE = "plugin.pasty.awesome.decode.preview";
 const ATTACHMENT_KEY = "primary";
 
 function buttonsFor(payload) {
-  const copyJsonEnabled =
-    payload.encoding === "jwt" || payload.decodedIsJSON === true;
-  const toggleTitle = payload.expanded === true ? "Show Less" : "Show More";
-  return [
-    { id: "copy-decoded", title: "Copy Decoded", isEnabled: true },
-    { id: "copy-json", title: "Copy as JSON", isEnabled: copyJsonEnabled },
-    { id: "toggle-expand", title: toggleTitle, isEnabled: true }
-  ];
+  const buttons = [];
+  buttons.push({ id: "copy-decoded", title: "Copy" });
+  if (payload.encoding === "jwt" || payload.decodedIsJSON === true) {
+    buttons.push({ id: "copy-json", title: "Copy as JSON" });
+  }
+  buttons.push({
+    id: "toggle-expand",
+    title: payload.expanded === true ? "Show Less" : "Show More"
+  });
+  return buttons;
 }
 
 function resolveAttachment(input) {
@@ -26,11 +28,7 @@ function resolveAttachment(input) {
     return {
       displayName: "Decoded Preview",
       tintHex: null,
-      buttons: [
-        { id: "copy-decoded", title: "Copy Decoded", isEnabled: false },
-        { id: "copy-json", title: "Copy as JSON", isEnabled: false },
-        { id: "toggle-expand", title: "Show More", isEnabled: false }
-      ]
+      buttons: []
     };
   }
 
