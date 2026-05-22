@@ -18,7 +18,7 @@ This project has been migrated to the new source-based plugin template:
 - Text input shape: `input.content.kind === "text"` with `input.content.text`
 - Renderer operation callbacks: removed. Renderer UI now uses `pasty.attachmentRenderer.onHostInvoke.on(...)`
 - Host buttons: seeded and updated from UI with `pasty.attachmentRenderer.setButtons(...)`
-- Height handling: UI calls `pasty.window.autoFit()` and the DOM `autoFit` helper
+- Height handling: renderer UI measures its own content and reports `pasty.window.setHeight({ height })`
 
 ## Project Structure
 

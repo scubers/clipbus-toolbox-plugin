@@ -37,7 +37,7 @@ Renderer UI owns interaction:
 - `pasty.attachmentRenderer.setButtons(...)` seeds and updates native host buttons.
 - `pasty.attachmentRenderer.onHostInvoke.on(...)` receives native button clicks.
 - `pasty.clipboard.copyText({ text })` copies decoded output.
-- `pasty.window.autoFit()` plus the DOM `autoFit()` helper adjusts height when expanding or collapsing.
+- Renderer UI measures its own content and calls `pasty.window.setHeight({ height })` when expanding or collapsing.
 
 Expanded state is local UI state. It is not written back to attachment payload because it is only presentation state.
 

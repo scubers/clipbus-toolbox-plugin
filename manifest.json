@@ -19,7 +19,7 @@
       "id": "decode-renderer",
       "title": "Decoded Preview",
       "attachmentType": "plugin.pasty.awesome.decode.preview",
-      "height": { "min": 60, "max": 480 },
+      "height": { "min": 32, "max": 480 },
       "uiEntry": "renderers/decode-renderer/index.html"
     }
   ],

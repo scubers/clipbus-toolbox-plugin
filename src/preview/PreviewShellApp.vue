@@ -76,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from "vue";
+import { computed, onBeforeUnmount, reactive, ref, watch } from "vue";
 import DecodeRendererApp from "../features/decode-renderer/app.vue";
 import { attachmentScenarios } from "./scenarios/attachmentScenarios";
 
@@ -110,7 +110,7 @@ const statusMessage = ref<string>("Ready for local UI iteration.");
 const activeButtons = ref<HostButton[]>([]);
 
 const viewportSize = reactive({ width: 560, height: 96 });
-const minimumViewportSize = { width: 320, height: 60 };
+const minimumViewportSize = { width: 320, height: 32 };
 
 installPreviewBridge();
 
@@ -247,11 +247,6 @@ function installPreviewBridge(): void {
             }
             return {};
           }
-          if (frame.method === "window.autoFit") {
-            await nextTick();
-            fitViewportToContent();
-            return {};
-          }
           if (frame.method === "console.log") {
             return {};
           }
@@ -260,12 +255,6 @@ function installPreviewBridge(): void {
       },
     },
   };
-}
-
-function fitViewportToContent(): void {
-  const webview = document.querySelector(".host-frame__webview") as HTMLElement | null;
-  const contentHeight = webview?.scrollHeight ?? viewportSize.height;
-  viewportSize.height = Math.max(minimumViewportSize.height, Math.min(480, Math.ceil(contentHeight)));
 }
 
 interface ResizeSession {

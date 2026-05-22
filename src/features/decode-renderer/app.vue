@@ -64,13 +64,13 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { pasty } from "@pasty/plugin-sdk/ui";
 import type { PluginAttachmentPayload } from "@pasty/plugin-sdk/ui";
-import { autoFit } from "@pasty/plugin-sdk/dom";
 import { useTopicRef } from "../../shared/composables/useTopicRef";
 import { highlightJson } from "../../shared/jsonHighlight";
 import { decodeDecodePayload, encodingLabel, type DecodePayload } from "./payload";
 
-const MIN_HEIGHT = 60;
+const MIN_HEIGHT = 32;
 const MAX_HEIGHT = 480;
+const HEIGHT_CHANGE_EPSILON = 1;
 
 const rootEl = ref<HTMLElement | null>(null);
 const attachmentPayload = useTopicRef(pasty.item.attachment);
@@ -99,9 +99,14 @@ const renderedDecoded = computed<string>(() => {
   return escapeHtml(text);
 });
 
-let disconnectAutoFit: (() => void) | null = null;
 let unsubHostInvoke: (() => void) | null = null;
 let copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let mutationObserver: MutationObserver | null = null;
+let observedHeightTarget: HTMLElement | null = null;
+let pendingHeightFrame: number | null = null;
+let lastReportedHeight: number | null = null;
+let forceNextHeightReport = false;
 
 function escapeHtml(text: string): string {
   return text.replace(
@@ -133,15 +138,6 @@ async function syncHostButtons(): Promise<void> {
     await pasty.attachmentRenderer.setButtons({ buttons: buttonsForCurrentState() });
   } catch {
     // Local preview may run without the host WebView bridge.
-  }
-}
-
-async function requestAutoFit(): Promise<void> {
-  await nextTick();
-  try {
-    await pasty.window.autoFit();
-  } catch {
-    // The DOM helper below still drives height in hosts that expose setHeight.
   }
 }
 
@@ -189,8 +185,9 @@ async function onCopyJson(): Promise<void> {
 
 async function onToggle(): Promise<void> {
   localExpanded.value = !localExpanded.value;
+  const heightSync = syncMeasuredHeight();
   await syncHostButtons();
-  await requestAutoFit();
+  await heightSync;
 }
 
 async function handleHostInvoke(detail: { buttonID?: string } | null | undefined): Promise<void> {
@@ -203,38 +200,118 @@ async function handleHostInvoke(detail: { buttonID?: string } | null | undefined
   }
 }
 
-async function attachAutoFitIfReady(): Promise<void> {
-  if (disconnectAutoFit || !payload.value) {
-    return;
-  }
-  await nextTick();
-  const target = rootEl.value?.querySelector(".decode-panel") as HTMLElement | null;
+function getHeightTarget(): HTMLElement | null {
+  return rootEl.value?.querySelector<HTMLElement>(".decode-panel, .decode-empty") ?? null;
+}
+
+function clampHeight(height: number): number {
+  return Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, Math.ceil(height)));
+}
+
+function measureTargetHeight(target: HTMLElement): number {
+  const rectHeight = target.getBoundingClientRect().height;
+  const fallbackHeight = Math.max(target.offsetHeight, target.scrollHeight);
+  return clampHeight(rectHeight > 0 ? rectHeight : fallbackHeight);
+}
+
+function reportMeasuredHeight(): void {
+  const target = getHeightTarget();
   if (!target) {
     return;
   }
-  disconnectAutoFit = autoFit({ min: MIN_HEIGHT, max: MAX_HEIGHT, target });
+
+  const height = measureTargetHeight(target);
+  if (
+    !forceNextHeightReport
+    && lastReportedHeight !== null
+    && Math.abs(height - lastReportedHeight) < HEIGHT_CHANGE_EPSILON
+  ) {
+    return;
+  }
+  forceNextHeightReport = false;
+  lastReportedHeight = height;
+
+  pasty.window.setHeight({ height }).catch(() => {
+    // Local preview may run without the host WebView bridge.
+  });
+}
+
+function scheduleMeasuredHeight(force = false): void {
+  forceNextHeightReport = forceNextHeightReport || force;
+  if (pendingHeightFrame !== null || typeof window === "undefined") {
+    return;
+  }
+
+  pendingHeightFrame = window.requestAnimationFrame(() => {
+    pendingHeightFrame = null;
+    reportMeasuredHeight();
+  });
+}
+
+function observeHeightTarget(target: HTMLElement | null): void {
+  if (target === observedHeightTarget) {
+    return;
+  }
+
+  resizeObserver?.disconnect();
+  mutationObserver?.disconnect();
+  resizeObserver = null;
+  mutationObserver = null;
+  observedHeightTarget = target;
+  lastReportedHeight = null;
+
+  if (!target) {
+    return;
+  }
+
+  if (typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => scheduleMeasuredHeight());
+    resizeObserver.observe(target);
+  }
+
+  if (typeof MutationObserver !== "undefined") {
+    mutationObserver = new MutationObserver(() => scheduleMeasuredHeight());
+    mutationObserver.observe(target, { childList: true, subtree: true, characterData: true });
+  }
+}
+
+async function syncMeasuredHeight(): Promise<void> {
+  await nextTick();
+  const target = getHeightTarget();
+  observeHeightTarget(target);
+  scheduleMeasuredHeight(true);
 }
 
 watch(
   () => payload.value?.expanded,
   async (value) => {
     localExpanded.value = value === true;
+    const heightSync = syncMeasuredHeight();
     await syncHostButtons();
-    await requestAutoFit();
+    await heightSync;
   },
   { immediate: true },
 );
 
+watch(payload, syncMeasuredHeight, { immediate: true });
+
 onMounted(() => {
   unsubHostInvoke = pasty.attachmentRenderer.onHostInvoke.on(handleHostInvoke);
-  watch(payload, attachAutoFitIfReady, { immediate: true });
+  void syncMeasuredHeight();
 });
 
 onUnmounted(() => {
   unsubHostInvoke?.();
   unsubHostInvoke = null;
-  disconnectAutoFit?.();
-  disconnectAutoFit = null;
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+  mutationObserver?.disconnect();
+  mutationObserver = null;
+  observedHeightTarget = null;
+  if (pendingHeightFrame !== null) {
+    window.cancelAnimationFrame(pendingHeightFrame);
+    pendingHeightFrame = null;
+  }
   if (copyResetTimer) {
     clearTimeout(copyResetTimer);
     copyResetTimer = null;

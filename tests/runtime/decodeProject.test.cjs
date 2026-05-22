@@ -21,7 +21,7 @@ test("manifest registers the decode plugin on the new dist/plugin.cjs runtime en
   assert.equal(manifest.attachmentRenderers.length, 1);
   assert.equal(manifest.attachmentRenderers[0].id, "decode-renderer");
   assert.equal(manifest.attachmentRenderers[0].attachmentType, "plugin.pasty.awesome.decode.preview");
-  assert.deepEqual(manifest.attachmentRenderers[0].height, { min: 60, max: 480 });
+  assert.deepEqual(manifest.attachmentRenderers[0].height, { min: 32, max: 480 });
   assert.equal(manifest.attachmentRenderers[0].uiEntry, "renderers/decode-renderer/index.html");
 
   assert.equal(manifest.detectors.length, 1);
@@ -58,7 +58,9 @@ test("decode UI uses SDK APIs instead of removed bridge APIs", () => {
   const source = fs.readFileSync(path.resolve(projectRoot, "src/features/decode-renderer/app.vue"), "utf8");
   assert.ok(source.includes("pasty.attachmentRenderer.onHostInvoke.on"));
   assert.ok(source.includes("pasty.attachmentRenderer.setButtons"));
-  assert.ok(source.includes("pasty.window.autoFit"));
+  assert.ok(source.includes("pasty.window.setHeight"));
+  assert.ok(!source.includes("pasty.window.autoFit"));
+  assert.ok(!source.includes("@pasty/plugin-sdk/dom"));
   assert.ok(!source.includes("pasty.ready"));
   assert.ok(!source.includes("pasty.item.setAttachments"));
   assert.ok(!source.includes("window.webkit.messageHandlers"));
