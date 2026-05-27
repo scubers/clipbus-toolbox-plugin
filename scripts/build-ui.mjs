@@ -14,16 +14,6 @@ function pascalCase(slug) {
   return slug.split("-").map(p => p.charAt(0).toUpperCase() + p.slice(1)).join("");
 }
 
-// Capability-gallery sub-features map to first-class manifest IDs that don't
-// follow the simple "template-{featureName}" convention. Keep this map in
-// sync with manifest.json — covered by tests/integration/galleryWiring.test.cjs.
-const NESTED_OVERRIDES = {
-  "capability-gallery/renderer-bounded-ui": { kind: "renderers", name: "gallery-renderer-bounded" },
-  "capability-gallery/renderer-fixed-ui": { kind: "renderers", name: "gallery-renderer-fixed" },
-  "capability-gallery/renderer-auto-ui": { kind: "renderers", name: "gallery-renderer-auto" },
-  "capability-gallery/draft-action-ui": { kind: "actions", name: "gallery-draft" },
-};
-
 async function hasEntryFiles(dir) {
   try {
     await stat(path.join(dir, "main.ts"));
@@ -34,6 +24,10 @@ async function hasEntryFiles(dir) {
   }
 }
 
+// Each src/features/<name>/ that ships main.ts + index.html is one UI bundle.
+// The directory name IS the manifest renderer/action id (e.g. decode-renderer →
+// dist/ui/renderers/decode-renderer). Names ending in "-renderer" are attachment
+// renderers; everything else is treated as an action UI.
 async function discoverPages() {
   const pages = [];
   const topLevel = await readdir(featuresDir, { withFileTypes: true });
@@ -41,48 +35,15 @@ async function discoverPages() {
     if (!dirent.isDirectory()) continue;
     const featureName = dirent.name;
     const featurePath = path.join(featuresDir, featureName);
-
-    if (await hasEntryFiles(featurePath)) {
-      // Existing single-feature dir (preview-renderer / expanded-renderer / draft-action).
-      let kind, name;
-      if (featureName.endsWith("-renderer")) {
-        kind = "renderers";
-        name = featureName === "preview-renderer" ? "template-renderer" : `template-${featureName}`;
-      } else {
-        kind = "actions";
-        name = `template-${featureName}`;
-      }
-      const globalName = `PastyTemplatePlugin${pascalCase(featureName)}`;
-      pages.push({
-        name,
-        kind,
-        globalName,
-        entry: path.join(featurePath, "main.ts"),
-        template: path.join(featurePath, "index.html"),
-      });
-      continue;
-    }
-
-    // Nested layout — each subdirectory with main.ts + index.html is its own UI bundle.
-    const sublevel = await readdir(featurePath, { withFileTypes: true });
-    for (const subDirent of sublevel) {
-      if (!subDirent.isDirectory()) continue;
-      const subPath = path.join(featurePath, subDirent.name);
-      if (!(await hasEntryFiles(subPath))) continue;
-      const key = `${featureName}/${subDirent.name}`;
-      const override = NESTED_OVERRIDES[key];
-      if (!override) {
-        throw new Error(`Nested UI entry ${key} has no NESTED_OVERRIDES mapping in build-ui.mjs`);
-      }
-      const globalName = `PastyTemplatePlugin${pascalCase(featureName)}${pascalCase(subDirent.name)}`;
-      pages.push({
-        name: override.name,
-        kind: override.kind,
-        globalName,
-        entry: path.join(subPath, "main.ts"),
-        template: path.join(subPath, "index.html"),
-      });
-    }
+    if (!(await hasEntryFiles(featurePath))) continue;
+    const kind = featureName.endsWith("-renderer") ? "renderers" : "actions";
+    pages.push({
+      name: featureName,
+      kind,
+      globalName: `PastyPlugin${pascalCase(featureName)}`,
+      entry: path.join(featurePath, "main.ts"),
+      template: path.join(featurePath, "index.html"),
+    });
   }
   return pages;
 }

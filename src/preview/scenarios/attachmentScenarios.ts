@@ -1,31 +1,15 @@
-interface AttachmentScenarioFact {
-  label: string;
-  value: string;
-}
+// Local preview-workbench scenarios for the decode renderer. Each scenario
+// fabricates a DecodePayload (the same shape the Node detector emits) and wraps
+// it in the bootstrap envelope the preview shell injects onto window globals.
+// Seed buttons are built with the renderer's own buttonsFor() so the preview
+// strip matches the host's runtime button logic (single source of truth).
+import { ATTACHMENT_TYPE, ATTACHMENT_KEY } from "../../features/decode-renderer/payload";
+import type { DecodeEncoding, DecodePayload } from "../../features/decode-renderer/payload";
+import { buttonsFor } from "../../features/decode-renderer/renderer";
+import type { PluginActionButton } from "@pasty/plugin-sdk/runtime";
 
-interface AttachmentScenarioButton {
-  id: string;
-  title: string;
-  isEnabled: boolean;
-}
-
-interface AttachmentScenarioInput {
-  id: string;
-  label: string;
-  headline: string;
-  subheadline: string;
-  typeLabel: string;
-  facts: AttachmentScenarioFact[];
-  text: string;
-  searchTerms?: string[];
-  accentHex?: string;
-  rendererID?: string;
-  rendererComponent?: "compact" | "expanded";
-  attachmentType?: string;
-  payloadKind?: string;
-  extended?: Record<string, unknown> | null;
-  buttons?: AttachmentScenarioButton[];
-}
+const PLUGIN_ID = "plugin.pasty.awesome.decode";
+const RENDERER_ID = "decode-renderer";
 
 export interface AttachmentScenarioBootstrap {
   pluginID: string;
@@ -43,158 +27,128 @@ export interface AttachmentScenarioBootstrap {
     attachmentKey: string;
     payloadJson: string;
   };
-  buttons: AttachmentScenarioButton[];
+  buttons: PluginActionButton[];
 }
 
 export interface AttachmentScenario {
   id: string;
   label: string;
-  rendererComponent: "compact" | "expanded";
-  searchTerms: string[];
   accentHex: string;
   bootstrap: AttachmentScenarioBootstrap;
 }
 
-interface AttachmentScenarioPayload {
-  kind: string;
-  version: number;
-  contentKind: string;
-  display: {
-    typeLabel: string;
-    headline: string;
-    subheadline: string;
-    facts: AttachmentScenarioFact[];
-  };
-  extended?: Record<string, unknown>;
+interface DecodeScenarioInput {
+  id: string;
+  label: string;
+  encoding: DecodeEncoding;
+  original: string;
+  decoded: string;
+  decodedIsJSON?: boolean;
+  jwt?: DecodePayload["jwt"];
+  epochMs?: number | null;
+  tsUnit?: "s" | "ms" | null;
+  accentHex?: string;
+  expanded?: boolean;
 }
 
-function createAttachmentScenario({
-  id,
-  label,
-  headline,
-  subheadline,
-  typeLabel,
-  facts,
-  text,
-  searchTerms = [],
-  accentHex = "#0f766e",
-  rendererID = "template-renderer",
-  rendererComponent = "compact",
-  attachmentType = "plugin.template.full.preview",
-  payloadKind = "template_preview",
-  extended = null,
-  buttons = [
-    { id: "copy-payload-json", title: "Copy Payload", isEnabled: true },
-    { id: "copy-renderer-context", title: "Copy Context", isEnabled: true }
-  ]
-}: AttachmentScenarioInput): AttachmentScenario {
-  const display = { typeLabel, headline, subheadline, facts };
-  const payload: AttachmentScenarioPayload = {
-    kind: payloadKind,
-    version: 2,
-    contentKind: "text",
-    display
+function createDecodeScenario(input: DecodeScenarioInput): AttachmentScenario {
+  const payload: DecodePayload = {
+    kind: "decode_preview",
+    version: 1,
+    encoding: input.encoding,
+    original: input.original,
+    truncated: false,
+    decoded: input.decoded,
+    decodedIsJSON: input.decodedIsJSON ?? false,
+    jwt: input.jwt ?? null,
+    epochMs: input.epochMs ?? null,
+    tsUnit: input.tsUnit ?? null,
+    originalLength: input.original.length,
+    decodedLength: input.decoded.length,
+    expanded: input.expanded ?? false,
   };
-  if (extended) {
-    payload.extended = extended;
-  }
 
   return {
-    id,
-    label,
-    rendererComponent,
-    searchTerms,
-    accentHex,
+    id: input.id,
+    label: input.label,
+    accentHex: input.accentHex ?? "#2563eb",
     bootstrap: {
-      pluginID: "plugin.template.full",
-      rendererID,
+      pluginID: PLUGIN_ID,
+      rendererID: RENDERER_ID,
       item: {
-        id: `item-${id}`,
+        id: `item-${input.id}`,
         type: "text",
-        text,
-        tags: ["template-plugin"],
-        sourceAppID: "com.preview.editor"
+        text: input.original,
+        tags: ["decode"],
+        sourceAppID: "com.preview.editor",
       },
       attachment: {
-        owner: "plugin.template.full",
-        attachmentType,
-        attachmentKey: `preview-${id}`,
-        payloadJson: JSON.stringify(payload)
+        owner: PLUGIN_ID,
+        attachmentType: ATTACHMENT_TYPE,
+        attachmentKey: ATTACHMENT_KEY,
+        payloadJson: JSON.stringify(payload),
       },
-      buttons
-    }
+      buttons: buttonsFor(payload),
+    },
   };
 }
 
 export const attachmentScenarios: AttachmentScenario[] = [
-  createAttachmentScenario({
-    id: "short-text",
-    label: "Short Text",
-    headline: "Template plugin preview",
-    subheadline: "Supports compact payload inspection inside a fixed-height renderer.",
-    typeLabel: "Text",
-    facts: [
-      { label: "Lines", value: "2" },
-      { label: "Chars", value: "68" },
-      { label: "Source", value: "Preview.app" }
-    ],
-    text: "Template plugin preview\nSupports compact payload inspection."
+  createDecodeScenario({
+    id: "base64-text",
+    label: "Base64 → text",
+    encoding: "base64",
+    original: "SGVsbG8sIFdvcmxkISBQYXN0eSBkZWNvZGUgcHJldmlldy4=",
+    decoded: "Hello, World! Pasty decode preview.",
+    accentHex: "#f59e0b",
+    expanded: true,
   }),
-  createAttachmentScenario({
-    id: "long-title",
-    label: "Long Title",
-    headline: "static func configure(_ webView: WKWebView) {",
-    subheadline: "Stress-case for truncation, fixed facts, and stable action-strip ownership.",
-    typeLabel: "Text",
-    facts: [
-      { label: "Lines", value: "1" },
-      { label: "Chars", value: "45" },
-      { label: "Scope", value: "Swift snippet" }
-    ],
-    text: "static func configure(_ webView: WKWebView) {",
-    searchTerms: ["configure", "WKWebView"]
+  createDecodeScenario({
+    id: "base64-json",
+    label: "Base64 → JSON",
+    encoding: "base64",
+    original: "eyJuYW1lIjoiUGFzdHkiLCJraW5kIjoiZGVjb2RlIn0=",
+    decoded: '{"name":"Pasty","kind":"decode"}',
+    decodedIsJSON: true,
+    accentHex: "#f59e0b",
+    expanded: true,
   }),
-  createAttachmentScenario({
-    id: "path-reference",
-    label: "Path Reference",
-    headline: "Quarterly Assets Bundle",
-    subheadline: "Path reference payloads should still read clearly without requiring preview scrolling.",
-    typeLabel: "Path",
-    facts: [
-      { label: "Entries", value: "4" },
-      { label: "Folder", value: "/Users/demo/Desktop" },
-      { label: "Source", value: "Finder" }
-    ],
-    text: "/Users/demo/Desktop/Quarterly Assets Bundle",
-    accentHex: "#0f766e"
-  }),
-  createAttachmentScenario({
-    id: "expanded-preview",
-    label: "Expanded (Dynamic Height)",
-    headline: "Template expanded preview",
-    subheadline: "Toggle Debug below to see pasty.window.autoFit drive pasty.window.setHeight as content grows.",
-    typeLabel: "Text",
-    facts: [
-      { label: "Lines", value: "3" },
-      { label: "Chars", value: "118" },
-      { label: "Source", value: "Preview.app" },
-      { label: "Tags", value: "1" }
-    ],
-    text: "Template expanded preview\nDemonstrates {min,max} height policy and bridge.theme.onChange().",
-    accentHex: "#2563eb",
-    rendererID: "template-expanded-renderer",
-    rendererComponent: "expanded",
-    attachmentType: "plugin.template.full.expanded",
-    payloadKind: "template_expanded",
-    extended: {
-      contentKind: "text",
-      sourceAppID: "com.preview.editor",
-      tags: ["template-plugin", "expanded-demo"],
-      text: "Template expanded preview\nDemonstrates the {min,max} height policy together with bridge.theme.onChange()."
+  createDecodeScenario({
+    id: "jwt",
+    label: "JWT",
+    encoding: "jwt",
+    original: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkphbmUgRG9lIn0.sig",
+    decoded: JSON.stringify(
+      { header: { alg: "HS256", typ: "JWT" }, payload: { sub: "1234567890", name: "Jane Doe" } },
+      null,
+      2,
+    ),
+    decodedIsJSON: true,
+    jwt: {
+      header: { alg: "HS256", typ: "JWT" },
+      payload: { sub: "1234567890", name: "Jane Doe" },
+      signature: "sig",
     },
-    buttons: [
-      { id: "toggle-debug", title: "Toggle Debug", isEnabled: true },
-      { id: "copy-debug-json", title: "Copy Debug", isEnabled: true }
-    ]
-  })
+    accentHex: "#a855f7",
+    expanded: true,
+  }),
+  createDecodeScenario({
+    id: "url",
+    label: "URL-encoded",
+    encoding: "url",
+    original: "https%3A%2F%2Fexample.com%2Fsearch%3Fq%3Dpasty%20decode%26lang%3Dzh",
+    decoded: "https://example.com/search?q=pasty decode&lang=zh",
+    accentHex: "#3b82f6",
+  }),
+  createDecodeScenario({
+    id: "timestamp",
+    label: "Unix timestamp",
+    encoding: "timestamp",
+    original: "1716800000",
+    decoded: "2024-05-27 12:53:20",
+    epochMs: 1716800000000,
+    tsUnit: "s",
+    accentHex: "#8b5cf6",
+    expanded: true,
+  }),
 ];

@@ -2,18 +2,10 @@
   <main class="workbench" :data-theme="selectedTheme">
     <section class="workbench__controls">
       <label class="workbench__control">
-        <span>View</span>
-        <select v-model="selectedView">
-          <option value="renderer">Renderer</option>
-          <option value="action">Action</option>
-        </select>
-      </label>
-
-      <label class="workbench__control">
         <span>Scenario</span>
         <select v-model="selectedScenarioID">
           <option
-            v-for="scenario in activeScenarioOptions"
+            v-for="scenario in attachmentScenarios"
             :key="scenario.id"
             :value="scenario.id"
           >
@@ -32,12 +24,9 @@
     </section>
 
     <section class="workbench__canvas">
-      <div
-        class="host-frame"
-        :class="selectedView === 'renderer' ? 'host-frame--renderer' : 'host-frame--action'"
-      >
+      <div class="host-frame">
         <div class="host-frame__title">
-          <span>{{ selectedView === "renderer" ? "Attachment Renderer" : "Draft Action" }}</span>
+          <span>Decode Renderer</span>
           <span>{{ frameSizeLabel }}</span>
         </div>
 
@@ -45,7 +34,7 @@
           <div class="host-frame__viewport-shell">
             <div class="host-frame__viewport" :style="viewportStyle">
               <div class="host-frame__webview">
-                <component :is="activeComponent" :key="componentKey" />
+                <DecodeRendererApp :key="componentKey" />
               </div>
             </div>
 
@@ -66,7 +55,6 @@
               :key="button.id"
               class="host-frame__button"
               type="button"
-              :class="button.id === activeDefaultButtonID ? 'host-frame__button--primary' : ''"
               @click="previewHostButton(button)"
             >
               {{ button.title }}
@@ -78,10 +66,10 @@
       <aside class="workbench__notes">
         <p class="workbench__notes-title">Preview Notes</p>
         <p class="workbench__notes-body">
-          This workbench simulates host chrome, theme changes, and bootstrap/search/theme events.
+          Simulates host chrome, theme changes, and bootstrap events for the decode renderer.
         </p>
         <p class="workbench__notes-body">
-          Use the host resize control below the preview viewport. In local preview, bridge calls fall back to console logging.
+          Drag the host resize control below the viewport to watch autoFit drive the card height. In local preview, bridge calls fall back to console logging.
         </p>
         <p class="workbench__notes-status">{{ statusMessage }}</p>
       </aside>
@@ -90,101 +78,55 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch, type Component } from "vue";
-import AttachmentTemplateApp from "../features/preview-renderer/app.vue";
-import ExpandedAttachmentTemplateApp from "../features/expanded-renderer/app.vue";
-// features/draft-action/ was deleted as part of the plugin-api-shrink follow-up
-// (template-draft-action action removed from manifest). The preview shell now
-// hosts the capability-gallery draft-action UI as the action-mode component.
-import DraftActionTemplateApp from "../features/capability-gallery/draft-action-ui/app.vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
+import DecodeRendererApp from "../features/decode-renderer/app.vue";
 import { attachmentScenarios } from "./scenarios/attachmentScenarios";
-import { actionScenarios } from "./scenarios/actionScenarios";
 
-type ViewKey = "renderer" | "action";
 type ThemeKey = "light" | "dark";
-type AttachmentVariantKey = "compact" | "expanded";
-
-const attachmentComponentMap: Record<AttachmentVariantKey, Component> = {
-  compact: AttachmentTemplateApp,
-  expanded: ExpandedAttachmentTemplateApp
-};
 
 const query = new URLSearchParams(window.location.search);
-const initialView: ViewKey = query.get("view") === "action" ? "action" : "renderer";
-const selectedView = ref<ViewKey>(initialView);
 const selectedTheme = ref<ThemeKey>(query.get("theme") === "light" ? "light" : "dark");
 const statusMessage = ref<string>("Ready for local UI iteration.");
 
 interface HostButton { id: string; title: string; isEnabled?: boolean }
 const activeButtons = ref<HostButton[]>([]);
-const activeDefaultButtonID = ref<string | null>(null);
 
 function previewHostButton(button: HostButton): void {
-  // Post-shrink wire splits host-invoke into two streams keyed by context:
-  //   - action mode      → pasty-plugin-action-host-invoke
-  //   - attachmentRenderer mode → pasty-plugin-attachment-host-invoke
-  // Both carry `{ buttonID }` (the `source: 'host'` field was removed in R10).
-  const eventName = selectedView.value === "action"
-    ? "pasty-plugin-action-host-invoke"
-    : "pasty-plugin-attachment-host-invoke";
-  window.dispatchEvent(new CustomEvent(eventName, { detail: { buttonID: button.id } }));
+  // Attachment-renderer host invokes carry `{ buttonID }` on the
+  // pasty-plugin-attachment-host-invoke stream (post plugin-api-shrink wire).
+  window.dispatchEvent(
+    new CustomEvent("pasty-plugin-attachment-host-invoke", { detail: { buttonID: button.id } }),
+  );
 }
 
 onMounted(() => {
   window.addEventListener("pasty-plugin-set-buttons", (e) => {
-    const ev = e as CustomEvent<{ buttons?: HostButton[]; defaultButtonID?: string | null }>;
+    const ev = e as CustomEvent<{ buttons?: HostButton[] }>;
     activeButtons.value = Array.isArray(ev.detail?.buttons) ? ev.detail.buttons : [];
-    activeDefaultButtonID.value = ev.detail?.defaultButtonID ?? null;
   });
 });
 
-const activeScenarioOptions = computed(() => selectedView.value === "renderer"
-  ? attachmentScenarios
-  : actionScenarios);
+const selectedScenarioID = ref<string>(resolveInitialScenarioID());
 
-const selectedScenarioID = ref<string>(resolveInitialScenarioID(initialView));
+const activeScenario = computed(() =>
+  attachmentScenarios.find((scenario) => scenario.id === selectedScenarioID.value) || attachmentScenarios[0],
+);
 
-const activeScenario = computed(() => activeScenarioOptions.value.find(
-  (scenario) => scenario.id === selectedScenarioID.value
-) || activeScenarioOptions.value[0]);
-
-const activeComponent = computed<Component>(() => {
-  if (selectedView.value !== "renderer") {
-    return DraftActionTemplateApp;
-  }
-  const variant = ((activeScenario.value as { rendererComponent?: AttachmentVariantKey } | undefined)?.rendererComponent ?? "compact");
-  return attachmentComponentMap[variant] ?? AttachmentTemplateApp;
-});
-
-const componentKey = computed<string>(() => `${selectedView.value}:${activeScenario.value?.id ?? "unknown"}`);
+const componentKey = computed<string>(() => `renderer:${activeScenario.value?.id ?? "unknown"}`);
 
 interface ViewportSize { width: number; height: number; }
 
-const minimumViewportSizes: Record<ViewKey, ViewportSize> = {
-  renderer: { width: 320, height: 220 },
-  action: { width: 320, height: 220 }
-};
+const minimumViewportSize: ViewportSize = { width: 320, height: 80 };
+const viewportSize = reactive<ViewportSize>({ width: 560, height: 240 });
 
-const viewportSizes = reactive<Record<ViewKey, ViewportSize>>({
-  renderer: { width: 560, height: 320 },
-  action: { width: 350, height: 250 }
-});
+const viewportStyle = computed(() => ({
+  width: `${viewportSize.width}px`,
+  height: `${viewportSize.height}px`,
+}));
 
-const viewportStyle = computed(() => {
-  const size = viewportSizes[selectedView.value];
-  return {
-    width: `${size.width}px`,
-    height: `${size.height}px`
-  };
-});
-
-const frameSizeLabel = computed<string>(() => {
-  const size = viewportSizes[selectedView.value];
-  return `${size.width} × ${size.height}`;
-});
+const frameSizeLabel = computed<string>(() => `${viewportSize.width} × ${viewportSize.height}`);
 
 interface ResizeSession {
-  view: ViewKey;
   startPointerX: number;
   startPointerY: number;
   startWidth: number;
@@ -193,50 +135,43 @@ interface ResizeSession {
 
 let resizeSession: ResizeSession | null = null;
 
-watch(selectedView, (view) => {
-  selectedScenarioID.value = resolveInitialScenarioID(view);
-});
-
 watch(
-  [selectedView, selectedScenarioID, selectedTheme],
+  [selectedScenarioID, selectedTheme],
   () => {
     applyPreviewState();
     syncQuery();
   },
-  { immediate: true }
+  { immediate: true },
 );
 
-function resolveInitialScenarioID(view: ViewKey): string {
-  const requestedScenarioID = query.get("scenario");
-  const options = view === "renderer" ? attachmentScenarios : actionScenarios;
-  return options.some((scenario) => scenario.id === requestedScenarioID)
-    ? (requestedScenarioID as string)
-    : options[0].id;
+function resolveInitialScenarioID(): string {
+  const requested = query.get("scenario");
+  return attachmentScenarios.some((scenario) => scenario.id === requested)
+    ? (requested as string)
+    : attachmentScenarios[0].id;
 }
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
-function dispatchEvent(name: string, detail: unknown): void {
+function dispatchPreviewEvent(name: string, detail: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }));
 }
 
-// Post-shrink theme tokens fixture (matches generated PluginThemeTokenSnapshot
-// shape: { scheme, tokens: PluginThemeTokens }). The preview shell ships a
-// minimal token set; real host injects the full palette.
 function buildThemeSnapshot(accentHex: string): { scheme: string; tokens: Record<string, string> } {
+  const light = selectedTheme.value === "light";
   return {
-    scheme: "light",
+    scheme: selectedTheme.value,
     tokens: {
-      surface: "#ffffff",
-      surfaceElevated: "#f8fafc",
-      textPrimary: "#0f172a",
-      textSecondary: "#475569",
-      textTertiary: "#64748b",
+      surface: light ? "#ffffff" : "#1e293b",
+      surfaceElevated: light ? "#f8fafc" : "#0f172a",
+      textPrimary: light ? "#0f172a" : "#e2e8f0",
+      textSecondary: light ? "#475569" : "#cbd5e1",
+      textTertiary: light ? "#64748b" : "#94a3b8",
       accent: accentHex,
       accentContrast: "#ffffff",
-      border: "rgba(226, 232, 240, 0.9)",
+      border: "rgba(148, 163, 184, 0.3)",
       divider: "rgba(148, 163, 184, 0.4)",
       success: "#16a34a",
       warning: "#f59e0b",
@@ -253,65 +188,37 @@ function applyPreviewState(): void {
 
   const bootstrap = clone(scenario.bootstrap) as unknown as Record<string, unknown>;
 
-  // Reset all post-shrink topic globals. The plugin-api-shrink change
-  // (commit cd2130cf) replaced the unified __PASTY_PLUGIN_BOOTSTRAP__ /
-  // __PASTY_PLUGIN_ACTION_BOOTSTRAP__ with one global per topic:
-  //   - __PASTY_PLUGIN_CONTEXT__   { mode, pluginID }
-  //   - __PASTY_PLUGIN_ITEM__      PluginClipboardItem
-  //   - __PASTY_PLUGIN_ATTACHMENT__ PluginAttachmentPayload     (attachmentRenderer mode only)
-  //   - __PASTY_PLUGIN_THEME__     PluginThemeTokenSnapshot
-  //   - __PASTY_PLUGIN_DRAFT__     Record<string, unknown>      (action mode only)
-  // (pasty-plugin-search and pasty-plugin-action-session were both deleted.)
   window.__PASTY_PLUGIN_CONTEXT__ = null;
   window.__PASTY_PLUGIN_ITEM__ = null;
   window.__PASTY_PLUGIN_ATTACHMENT__ = null;
   window.__PASTY_PLUGIN_THEME__ = null;
-  window.__PASTY_PLUGIN_DRAFT__ = null;
 
-  const pluginID = String(bootstrap.pluginID ?? "plugin.template.full");
-  const themeSnapshot = buildThemeSnapshot(
-    (scenario as { accentHex?: string }).accentHex ?? "#2563EB",
-  );
-
-  if (selectedView.value === "renderer") {
-    const context = { mode: "attachmentRenderer", pluginID };
-    const itemPayload = bootstrap.item;
-    const attachmentPayload = {
-      item: bootstrap.item,
-      attachment: bootstrap.attachment,
-    };
-    window.__PASTY_PLUGIN_CONTEXT__ = context;
-    window.__PASTY_PLUGIN_ITEM__ = itemPayload;
-    window.__PASTY_PLUGIN_ATTACHMENT__ = attachmentPayload;
-    window.__PASTY_PLUGIN_THEME__ = themeSnapshot;
-    dispatchEvent("pasty-plugin-context", context);
-    dispatchEvent("pasty-plugin-item", itemPayload);
-    dispatchEvent("pasty-plugin-attachment", attachmentPayload);
-    dispatchEvent("pasty-plugin-theme", themeSnapshot);
-    statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
-    return;
-  }
-
-  // Action view — no more PluginActionSession injection. Wire only carries
-  // context + item + draft + theme; the action plugin self-renders its title
-  // and button strip via pasty.action.setButtons after load.
-  const context = { mode: "action", pluginID };
+  const pluginID = String(bootstrap.pluginID ?? "plugin.pasty.awesome.decode");
+  const themeSnapshot = buildThemeSnapshot(scenario.accentHex ?? "#2563eb");
+  const context = { mode: "attachmentRenderer", pluginID };
   const itemPayload = bootstrap.item;
-  const draftPayload = bootstrap.draft ?? {};
+  const attachmentPayload = { item: bootstrap.item, attachment: bootstrap.attachment };
+
   window.__PASTY_PLUGIN_CONTEXT__ = context;
   window.__PASTY_PLUGIN_ITEM__ = itemPayload;
-  window.__PASTY_PLUGIN_DRAFT__ = draftPayload;
+  window.__PASTY_PLUGIN_ATTACHMENT__ = attachmentPayload;
   window.__PASTY_PLUGIN_THEME__ = themeSnapshot;
-  dispatchEvent("pasty-plugin-context", context);
-  dispatchEvent("pasty-plugin-item", itemPayload);
-  dispatchEvent("pasty-plugin-draft", draftPayload);
-  dispatchEvent("pasty-plugin-theme", themeSnapshot);
-  statusMessage.value = `Action preview loaded: ${scenario.label}`;
+
+  dispatchPreviewEvent("pasty-plugin-context", context);
+  dispatchPreviewEvent("pasty-plugin-item", itemPayload);
+  dispatchPreviewEvent("pasty-plugin-attachment", attachmentPayload);
+  dispatchPreviewEvent("pasty-plugin-theme", themeSnapshot);
+
+  // Seed the host button strip from the scenario bootstrap. In local preview
+  // the SDK does not emit setButtons over a window event, so the live
+  // renderer's syncHostButtons() is a no-op here; the seed keeps the strip
+  // populated. Clicks still flow through pasty-plugin-attachment-host-invoke.
+  activeButtons.value = scenario.bootstrap.buttons;
+  statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
 }
 
 function syncQuery(): void {
   const next = new URL(window.location.href);
-  next.searchParams.set("view", selectedView.value);
   next.searchParams.set("scenario", selectedScenarioID.value);
   next.searchParams.set("theme", selectedTheme.value);
   window.history.replaceState({}, "", next);
@@ -320,16 +227,12 @@ function syncQuery(): void {
 function startResize(event: PointerEvent): void {
   event.preventDefault();
   stopResize();
-
-  const view = selectedView.value;
   resizeSession = {
-    view,
     startPointerX: event.clientX,
     startPointerY: event.clientY,
-    startWidth: viewportSizes[view].width,
-    startHeight: viewportSizes[view].height
+    startWidth: viewportSize.width,
+    startHeight: viewportSize.height,
   };
-
   window.addEventListener("pointermove", handleResizePointerMove);
   window.addEventListener("pointerup", stopResize);
   window.addEventListener("pointercancel", stopResize);
@@ -346,18 +249,9 @@ function handleResizePointerMove(event: PointerEvent): void {
   if (!resizeSession) {
     return;
   }
-
-  const { view, startPointerX, startPointerY, startWidth, startHeight } = resizeSession;
-  const minimumSize = minimumViewportSizes[view];
-
-  viewportSizes[view].width = Math.max(
-    minimumSize.width,
-    Math.round(startWidth + (event.clientX - startPointerX))
-  );
-  viewportSizes[view].height = Math.max(
-    minimumSize.height,
-    Math.round(startHeight + (event.clientY - startPointerY))
-  );
+  const { startPointerX, startPointerY, startWidth, startHeight } = resizeSession;
+  viewportSize.width = Math.max(minimumViewportSize.width, Math.round(startWidth + (event.clientX - startPointerX)));
+  viewportSize.height = Math.max(minimumViewportSize.height, Math.round(startHeight + (event.clientY - startPointerY)));
 }
 
 onBeforeUnmount(() => {
@@ -467,10 +361,6 @@ onBeforeUnmount(() => {
   justify-items: start;
 }
 
-.host-frame__viewport {
-  flex: none;
-}
-
 .host-frame__webview {
   width: 100%;
   height: 100%;
@@ -532,19 +422,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.host-frame__button--primary {
-  background: rgba(15, 23, 42, 0.9);
-  color: #f8fafc;
-}
-
 .workbench[data-theme="light"] .host-frame__button {
   background: rgba(255, 255, 255, 0.82);
   color: #334155;
-}
-
-.workbench[data-theme="light"] .host-frame__button--primary {
-  background: #0f172a;
-  color: #f8fafc;
 }
 
 .workbench[data-theme="light"] .host-frame__chrome-label {
