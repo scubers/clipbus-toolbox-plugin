@@ -78,3 +78,5 @@ out/
 .pnp.*
 
 .omc
+
+.codex/environments
