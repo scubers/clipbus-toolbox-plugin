@@ -1,8 +1,8 @@
 {
   "schemaVersion": 2,
   "plugin": {
-    "id": "plugin.pasty.awesome.decode",
-    "title": "Pasty Awesome Decode",
+    "id": "plugin.pasty.toolbox",
+    "title": "Pasty Toolbox",
     "version": "0.1.0"
   },
   "install": {
@@ -18,7 +18,7 @@
     {
       "id": "decode-renderer",
       "title": "Decoded Preview",
-      "attachmentType": "plugin.pasty.awesome.decode.preview",
+      "attachmentType": "plugin.pasty.toolbox.decode.preview",
       "height": { "min": 32, "max": 480 },
       "uiEntry": "renderers/decode-renderer/index.html"
     }
@@ -28,7 +28,7 @@
       "id": "decode-detector",
       "title": "Decode Detector",
       "supportedInputKinds": ["text"],
-      "attachmentTypes": ["plugin.pasty.awesome.decode.preview"]
+      "attachmentTypes": ["plugin.pasty.toolbox.decode.preview"]
     }
   ]
 }

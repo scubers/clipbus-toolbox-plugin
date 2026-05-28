@@ -1,8 +1,8 @@
 {
-  "name": "@pasty/awesome-decode",
+  "name": "@pasty/toolbox-plugin",
   "private": true,
   "version": "0.1.0",
-  "description": "Pasty plugin that detects and decodes clipboard text (JWT, escaped JSON, URL, timestamp, date, Base64) into an inline preview card.",
+  "description": "Pasty aggregate plugin hosting multiple clipboard features; currently a string decoder (JWT, escaped JSON, URL, timestamp, date, Base64) shown as an inline preview card.",
   "engines": {
     "node": ">=18.0.0"
   },

@@ -11,29 +11,29 @@ function loadJSON(relativePath) {
   return JSON.parse(fs.readFileSync(path.resolve(projectRoot, relativePath), "utf8"));
 }
 
-test("manifest registers the decode plugin on the new dist/plugin.cjs runtime entry", () => {
+test("manifest declares the toolbox plugin identity and the decode feature", () => {
   const manifest = loadJSON("manifest.json");
-  assert.equal(manifest.plugin.id, "plugin.pasty.awesome.decode");
-  assert.equal(manifest.plugin.title, "Pasty Awesome Decode");
+  assert.equal(manifest.plugin.id, "plugin.pasty.toolbox");
+  assert.equal(manifest.plugin.title, "Pasty Toolbox");
   assert.equal(manifest.runtime.nodeEntry, "dist/plugin.cjs");
   assert.deepEqual(manifest.permissions, ["setAttachment"]);
 
   assert.equal(manifest.attachmentRenderers.length, 1);
   assert.equal(manifest.attachmentRenderers[0].id, "decode-renderer");
-  assert.equal(manifest.attachmentRenderers[0].attachmentType, "plugin.pasty.awesome.decode.preview");
+  assert.equal(manifest.attachmentRenderers[0].attachmentType, "plugin.pasty.toolbox.decode.preview");
   assert.deepEqual(manifest.attachmentRenderers[0].height, { min: 32, max: 480 });
   assert.equal(manifest.attachmentRenderers[0].uiEntry, "renderers/decode-renderer/index.html");
 
   assert.equal(manifest.detectors.length, 1);
   assert.equal(manifest.detectors[0].id, "decode-detector");
   assert.deepEqual(manifest.detectors[0].supportedInputKinds, ["text"]);
-  assert.deepEqual(manifest.detectors[0].attachmentTypes, ["plugin.pasty.awesome.decode.preview"]);
+  assert.deepEqual(manifest.detectors[0].attachmentTypes, ["plugin.pasty.toolbox.decode.preview"]);
   assert.equal(manifest.actions, undefined);
 });
 
-test("package keeps decode identity and verification scripts", () => {
+test("package declares toolbox identity and verification scripts", () => {
   const packageJSON = loadJSON("package.json");
-  assert.equal(packageJSON.name, "@pasty/awesome-decode");
+  assert.equal(packageJSON.name, "@pasty/toolbox-plugin");
   assert.ok(packageJSON.scripts["build:runtime"]);
   assert.ok(packageJSON.scripts["build:ui"]);
   assert.ok(packageJSON.scripts["verify:build"]);
@@ -41,17 +41,20 @@ test("package keeps decode identity and verification scripts", () => {
   assert.ok(packageJSON.scripts.lint);
 });
 
-test("runtime setup registers decode handlers only", () => {
-  const { createDecodeDetector } = require(path.resolve(projectRoot, "src/features/decode-renderer/detector.ts"));
-  const { createDecodeRenderer } = require(path.resolve(projectRoot, "src/features/decode-renderer/renderer.ts"));
-  const runtime = {
-    detectors: { "decode-detector": createDecodeDetector() },
-    attachmentRenderers: { "decode-renderer": createDecodeRenderer() },
-  };
+test("feature registry merges decode handlers and omits empty slots", () => {
+  const { features } = require(path.resolve(projectRoot, "src/features/index.ts"));
+  const { mergeFeatures } = require(path.resolve(projectRoot, "src/features/registry.ts"));
+  const runtime = mergeFeatures(features);
 
   assert.ok(runtime.detectors["decode-detector"]);
   assert.ok(runtime.attachmentRenderers["decode-renderer"]);
   assert.equal(runtime.actions, undefined);
+  assert.equal(runtime.messageHandlers, undefined);
+
+  assert.throws(
+    () => mergeFeatures([{ detectors: { dup: {} } }, { detectors: { dup: {} } }]),
+    /Duplicate/,
+  );
 });
 
 test("decode UI uses SDK APIs instead of removed bridge APIs", () => {

@@ -1,4 +1,4 @@
-# Pasty Awesome Decode
+# Pasty Toolbox
 
 > 写新插件先看 [GUIDE.md](./GUIDE.md)。它和本工程一起就是开发 Pasty 插件的完整起步资料。
 
@@ -15,13 +15,13 @@ detector 对文本按以下顺序尝试，命中即停：
 5. **日期字符串** — `Date.parse` 可识别、带日期/时间分隔符的字符串
 6. **Base64** — 标准 / URL-safe，可打印率 ≥ 95%
 
-命中后产出 `plugin.pasty.awesome.decode.preview` 附件，由折叠卡片渲染：chip 标注编码类型、一行预览、复制按钮、展开 chevron。展开体显示完整解码内容（JSON 语法高亮）或时间详情（local / UTC / ISO / epoch）。卡片高度用 SDK `autoFit` 在 32–480px 间自适应。时间格式读取宿主设置 `timestampFormat`（默认 `yyyy-MM-dd HH:mm:ss`）。
+命中后产出 `plugin.pasty.toolbox.decode.preview` 附件，由折叠卡片渲染：chip 标注编码类型、一行预览、复制按钮、展开 chevron。展开体显示完整解码内容（JSON 语法高亮）或时间详情（local / UTC / ISO / epoch）。卡片高度用 SDK `autoFit` 在 32–480px 间自适应。时间格式读取宿主设置 `timestampFormat`（默认 `yyyy-MM-dd HH:mm:ss`）。
 
 ## 工程结构
 
 ```text
-pasty-awesome-decode/
-├── manifest.json                       ← plugin.pasty.awesome.decode
+pasty-toolbox-plugin/
+├── manifest.json                       ← plugin.pasty.toolbox
 ├── package.json                        ← 依赖 @pasty/plugin-sdk（独立 npm 包）
 ├── scripts/                            ← build:runtime / build:ui / verify:build
 ├── src/

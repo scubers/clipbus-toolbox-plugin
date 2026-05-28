@@ -193,7 +193,7 @@ function applyPreviewState(): void {
   window.__PASTY_PLUGIN_ATTACHMENT__ = null;
   window.__PASTY_PLUGIN_THEME__ = null;
 
-  const pluginID = String(bootstrap.pluginID ?? "plugin.pasty.awesome.decode");
+  const pluginID = String(bootstrap.pluginID ?? "plugin.pasty.toolbox");
   const themeSnapshot = buildThemeSnapshot(scenario.accentHex ?? "#2563eb");
   const context = { mode: "attachmentRenderer", pluginID };
   const itemPayload = bootstrap.item;

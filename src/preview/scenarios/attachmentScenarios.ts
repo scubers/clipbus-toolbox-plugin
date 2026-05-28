@@ -8,7 +8,7 @@ import type { DecodeEncoding, DecodePayload } from "../../features/decode-render
 import { buttonsFor } from "../../features/decode-renderer/renderer";
 import type { PluginActionButton } from "@pasty/plugin-sdk/runtime";
 
-const PLUGIN_ID = "plugin.pasty.awesome.decode";
+const PLUGIN_ID = "plugin.pasty.toolbox";
 const RENDERER_ID = "decode-renderer";
 
 export interface AttachmentScenarioBootstrap {

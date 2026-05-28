@@ -6,31 +6,57 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, "..");
 
-const rendererDir = "dist/ui/renderers/decode-renderer";
-const rendererHTMLPath = path.resolve(projectRoot, rendererDir, "index.html");
-const rendererJSPath = path.resolve(projectRoot, rendererDir, "index.js");
-const rendererCSSPath = path.resolve(projectRoot, rendererDir, "index.css");
-const runtimeEntryPath = path.resolve(projectRoot, "dist/plugin.cjs");
+const manifest = JSON.parse(await readFile(path.resolve(projectRoot, "manifest.json"), "utf8"));
 
-const rendererHTML = await readFile(rendererHTMLPath, "utf8");
-await readFile(rendererJSPath, "utf8");
-await readFile(rendererCSSPath, "utf8");
-const runtimeEntry = await readFile(runtimeEntryPath, "utf8");
-
-if (!rendererHTML.includes("./index.js") || !rendererHTML.includes("./index.css")) {
-  throw new Error("decode renderer HTML must reference page-local built assets.");
+const uiRoot = manifest.runtime?.uiRoot;
+const nodeEntry = manifest.runtime?.nodeEntry;
+if (!uiRoot || !nodeEntry) {
+  throw new Error("manifest.runtime must declare uiRoot and nodeEntry.");
 }
 
-if (rendererHTML.includes('src="/') || rendererHTML.includes('href="/')) {
-  throw new Error("decode renderer HTML must not contain absolute local asset references.");
+// Every UI-backed renderer/action must have built page-local assets that the
+// HTML references relatively (the host serves each page from its own dir).
+const uiContributions = [
+  ...(manifest.attachmentRenderers ?? []),
+  ...(manifest.actions ?? []),
+].filter((entry) => typeof entry.uiEntry === "string" && entry.uiEntry.length > 0);
+
+for (const entry of uiContributions) {
+  const htmlPath = path.resolve(projectRoot, uiRoot, entry.uiEntry);
+  const pageDir = path.dirname(htmlPath);
+  const html = await readFile(htmlPath, "utf8");
+  await readFile(path.resolve(pageDir, "index.js"), "utf8");
+
+  if (!html.includes("./index.js")) {
+    throw new Error(`${entry.id}: built HTML must reference page-local ./index.js.`);
+  }
+  if (html.includes("./index.css")) {
+    await readFile(path.resolve(pageDir, "index.css"), "utf8");
+  }
+  if (html.includes('src="/') || html.includes('href="/')) {
+    throw new Error(`${entry.id}: built HTML must not contain absolute local asset references.`);
+  }
 }
 
-if (
-  !runtimeEntry.includes("definePlugin") ||
-  !runtimeEntry.includes("decode-detector") ||
-  !runtimeEntry.includes("decode-renderer")
-) {
-  throw new Error("dist/plugin.cjs does not contain the required decode runtime bundles.");
+// The runtime bundle must call definePlugin and address every manifest id, so a
+// missing/misnamed handler registration is caught before shipping.
+const runtimeEntry = await readFile(path.resolve(projectRoot, nodeEntry), "utf8");
+if (!runtimeEntry.includes("definePlugin")) {
+  throw new Error(`runtime bundle ${nodeEntry} must call definePlugin.`);
 }
 
-console.log("Build verification passed.");
+const handlerIds = [
+  ...(manifest.attachmentRenderers ?? []),
+  ...(manifest.detectors ?? []),
+  ...(manifest.actions ?? []),
+].map((entry) => entry.id);
+
+for (const id of handlerIds) {
+  if (!runtimeEntry.includes(id)) {
+    throw new Error(`runtime bundle ${nodeEntry} is missing handler id "${id}".`);
+  }
+}
+
+console.log(
+  `Build verification passed (${uiContributions.length} UI page(s), ${handlerIds.length} handler id(s)).`,
+);

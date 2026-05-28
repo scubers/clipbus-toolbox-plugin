@@ -1,16 +1,9 @@
 import { definePlugin } from "@pasty/plugin-sdk/runtime";
-import { createDecodeDetector } from "./features/decode-renderer/detector";
-import { createDecodeRenderer } from "./features/decode-renderer/renderer";
+import { features } from "./features/index.ts";
+import { mergeFeatures } from "./features/registry.ts";
 
 export default definePlugin({
   setup() {
-    return {
-      attachmentRenderers: {
-        "decode-renderer": createDecodeRenderer(),
-      },
-      detectors: {
-        "decode-detector": createDecodeDetector(),
-      },
-    };
+    return mergeFeatures(features);
   },
 });
