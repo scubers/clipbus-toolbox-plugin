@@ -45,6 +45,34 @@
       "supportedItemTypes": ["text"],
       "lifecycle": "auto-run",
       "keywords": ["lowercase", "lower", "case", "小写"]
+    },
+    {
+      "id": "camelCase",
+      "title": "camelCase",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["camelCase", "camel", "case", "小驼峰"]
+    },
+    {
+      "id": "pascalCase",
+      "title": "PascalCase",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["PascalCase", "pascal", "case", "大驼峰"]
+    },
+    {
+      "id": "snakeCase",
+      "title": "snake_case",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["snake_case", "snake", "case", "蛇形"]
+    },
+    {
+      "id": "kebabCase",
+      "title": "kebab-case",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["kebab-case", "kebab", "case", "短横线"]
     }
   ]
 }

@@ -37,6 +37,42 @@ test("lowercase action converts text content to lower case", async () => {
   assert.equal(out.userMessage, "Converted to lowercase");
 });
 
+test("camelCase action converts text to camelCase", async () => {
+  const out = await caseConvertFeature.actions.camelCase.runAutoAction(textInput("Hello world FOO"));
+  assert.equal(out.result.resultKind, "text");
+  assert.equal(out.result.text, "helloWorldFoo");
+  assert.equal(out.userMessage, "Converted to camelCase");
+});
+
+test("pascalCase action converts text to PascalCase", async () => {
+  const out = await caseConvertFeature.actions.pascalCase.runAutoAction(textInput("hello world"));
+  assert.equal(out.result.text, "HelloWorld");
+  assert.equal(out.userMessage, "Converted to PascalCase");
+});
+
+test("snakeCase action converts text to snake_case", async () => {
+  const out = await caseConvertFeature.actions.snakeCase.runAutoAction(textInput("Hello World"));
+  assert.equal(out.result.text, "hello_world");
+  assert.equal(out.userMessage, "Converted to snake_case");
+});
+
+test("kebabCase action converts text to kebab-case", async () => {
+  const out = await caseConvertFeature.actions.kebabCase.runAutoAction(textInput("Hello World"));
+  assert.equal(out.result.text, "hello-world");
+  assert.equal(out.userMessage, "Converted to kebab-case");
+});
+
+test("style conversions recognise separators, camelCase, and acronym runs", async () => {
+  const snake = await caseConvertFeature.actions.snakeCase.runAutoAction(textInput("getHTTPResponseCode"));
+  assert.equal(snake.result.text, "get_http_response_code");
+
+  const kebab = await caseConvertFeature.actions.kebabCase.runAutoAction(textInput("foo_bar-baz"));
+  assert.equal(kebab.result.text, "foo-bar-baz");
+
+  const camel = await caseConvertFeature.actions.camelCase.runAutoAction(textInput("PascalToCamel"));
+  assert.equal(camel.result.text, "pascalToCamel");
+});
+
 test("case actions emit no result for non-text content", async () => {
   const out = await caseConvertFeature.actions.uppercase.runAutoAction(imageInput());
   assert.equal(out.result.resultKind, "none");
