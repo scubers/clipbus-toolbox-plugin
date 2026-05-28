@@ -34,6 +34,8 @@ test("resolveAttachment returns Copy + toggle-expand for plain Base64", () => {
   });
   assert.equal(out.displayName, "Decoded Preview - Base64");
   assert.deepEqual(out.buttons.map((button) => button.id), ["copy-decoded", "toggle-expand"]);
+  // Non-JSON decodes keep the plain "Copy" label (no minified/pretty distinction).
+  assert.equal(out.buttons.find((button) => button.id === "copy-decoded").title, "Copy");
 });
 
 test("resolveAttachment toggle-expand title reflects payload.expanded flag", () => {
@@ -49,12 +51,13 @@ test("resolveAttachment toggle-expand title reflects payload.expanded flag", () 
   assert.equal(expanded.buttons.find((button) => button.id === "toggle-expand").title, "Show Less");
 });
 
-test("resolveAttachment includes Copy as JSON for JSON decodes and JWTs", () => {
+test("resolveAttachment labels JSON decodes and JWTs as Copy minified + Copy pretty", () => {
   const { resolveAttachment } = loadRenderer();
   const jsonOut = resolveAttachment({
     attachment: { payloadJson: buildPayloadJson({ decoded: '{"a":1}', decodedIsJSON: true }) },
   });
-  assert.ok(jsonOut.buttons.find((button) => button.id === "copy-json"));
+  assert.equal(jsonOut.buttons.find((button) => button.id === "copy-decoded").title, "Copy minified");
+  assert.equal(jsonOut.buttons.find((button) => button.id === "copy-json").title, "Copy pretty");
 
   const jwtOut = resolveAttachment({
     attachment: {
@@ -66,7 +69,8 @@ test("resolveAttachment includes Copy as JSON for JSON decodes and JWTs", () => 
       }),
     },
   });
-  assert.ok(jwtOut.buttons.find((button) => button.id === "copy-json"));
+  assert.equal(jwtOut.buttons.find((button) => button.id === "copy-decoded").title, "Copy minified");
+  assert.equal(jwtOut.buttons.find((button) => button.id === "copy-json").title, "Copy pretty");
 });
 
 test("resolveAttachment hides invalid payloads", () => {

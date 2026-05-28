@@ -182,9 +182,10 @@ function buttonsForCurrentState(): Array<{ id: string; title: string; isEnabled:
     return [];
   }
 
-  const buttons = [{ id: "copy-decoded", title: "Copy", isEnabled: true }];
-  if (currentPayload.encoding === "jwt" || currentPayload.decodedIsJSON === true) {
-    buttons.push({ id: "copy-json", title: "Copy as JSON", isEnabled: true });
+  const isJson = currentPayload.encoding === "jwt" || currentPayload.decodedIsJSON === true;
+  const buttons = [{ id: "copy-decoded", title: isJson ? "Copy minified" : "Copy", isEnabled: true }];
+  if (isJson) {
+    buttons.push({ id: "copy-json", title: "Copy pretty", isEnabled: true });
   }
   buttons.push({
     id: "toggle-expand",
@@ -221,6 +222,14 @@ function markCopied(): void {
   }, 1200);
 }
 
+function minifyJson(text: string): string {
+  try {
+    return JSON.stringify(JSON.parse(text));
+  } catch {
+    return text;
+  }
+}
+
 async function onCopyDecoded(): Promise<void> {
   const currentPayload = payload.value;
   if (!currentPayload) {
@@ -231,6 +240,8 @@ async function onCopyDecoded(): Promise<void> {
     text = formattedLocalTime(currentPayload);
   } else if (currentPayload.encoding === "date" && currentPayload.epochMs !== null) {
     text = String(currentPayload.epochMs);
+  } else if (currentPayload.encoding === "jwt" || currentPayload.decodedIsJSON === true) {
+    text = minifyJson(currentPayload.decoded);
   } else {
     text = currentPayload.decoded;
   }

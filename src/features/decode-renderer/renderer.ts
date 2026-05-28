@@ -7,11 +7,12 @@ import type {
 import { decodeDecodePayload, encodingLabel, type DecodePayload } from "./payload.ts";
 
 export function buttonsFor(payload: DecodePayload): PluginActionButton[] {
+  const isJson = payload.encoding === "jwt" || payload.decodedIsJSON === true;
   const buttons: PluginActionButton[] = [
-    { id: "copy-decoded", title: "Copy", isEnabled: true },
+    { id: "copy-decoded", title: isJson ? "Copy minified" : "Copy", isEnabled: true },
   ];
-  if (payload.encoding === "jwt" || payload.decodedIsJSON === true) {
-    buttons.push({ id: "copy-json", title: "Copy as JSON", isEnabled: true });
+  if (isJson) {
+    buttons.push({ id: "copy-json", title: "Copy pretty", isEnabled: true });
   }
   buttons.push({
     id: "toggle-expand",
