@@ -28,7 +28,14 @@ test("manifest declares the toolbox plugin identity and the decode feature", () 
   assert.equal(manifest.detectors[0].id, "decode-detector");
   assert.deepEqual(manifest.detectors[0].supportedInputKinds, ["text"]);
   assert.deepEqual(manifest.detectors[0].attachmentTypes, ["plugin.pasty.toolbox.decode.preview"]);
-  assert.equal(manifest.actions, undefined);
+
+  assert.equal(manifest.actions.length, 2);
+  assert.deepEqual(manifest.actions.map((action) => action.id), ["uppercase", "lowercase"]);
+  for (const action of manifest.actions) {
+    assert.deepEqual(action.supportedItemTypes, ["text"]);
+    assert.equal(action.lifecycle, "auto-run");
+    assert.equal(action.uiEntry, undefined);
+  }
 });
 
 test("package declares toolbox identity and verification scripts", () => {
@@ -48,7 +55,8 @@ test("feature registry merges decode handlers and omits empty slots", () => {
 
   assert.ok(runtime.detectors["decode-detector"]);
   assert.ok(runtime.attachmentRenderers["decode-renderer"]);
-  assert.equal(runtime.actions, undefined);
+  assert.ok(runtime.actions.uppercase);
+  assert.ok(runtime.actions.lowercase);
   assert.equal(runtime.messageHandlers, undefined);
 
   assert.throws(

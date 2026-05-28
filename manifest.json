@@ -30,5 +30,21 @@
       "supportedInputKinds": ["text"],
       "attachmentTypes": ["plugin.pasty.toolbox.decode.preview"]
     }
+  ],
+  "actions": [
+    {
+      "id": "uppercase",
+      "title": "Uppercase",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["uppercase", "upper", "case", "大写"]
+    },
+    {
+      "id": "lowercase",
+      "title": "Lowercase",
+      "supportedItemTypes": ["text"],
+      "lifecycle": "auto-run",
+      "keywords": ["lowercase", "lower", "case", "小写"]
+    }
   ]
 }
