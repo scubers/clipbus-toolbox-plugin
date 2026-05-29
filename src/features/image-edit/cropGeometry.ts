@@ -99,16 +99,59 @@ export function displayBoxToCrop(box: Box, displayWidth: number, origWidth: numb
   };
 }
 
-/** Human-readable aspect ratio: simplified `a:b` when tidy, else 2-dp decimal. */
+/**
+ * Resize the crop box to a target size expressed in ORIGINAL pixels, keeping the
+ * top-left anchor fixed. Each axis is clamped to [1, original] before being
+ * converted to display pixels; the result is clamped to the image bounds (so the
+ * anchor only shifts up/left if the box would overflow). Pass null for an axis to
+ * leave it unchanged — this is the inverse of displayBoxToCrop for the W/H inputs.
+ */
+export function boxFromCropSize(
+  box: Box,
+  target: { width: number | null; height: number | null },
+  displayWidth: number,
+  displayHeight: number,
+  origWidth: number,
+  origHeight: number,
+  minSize: number,
+): Box {
+  const sx = origWidth > 0 ? displayWidth / origWidth : 1; // display px per original px (x)
+  const sy = origHeight > 0 ? displayHeight / origHeight : 1; // display px per original px (y)
+  let width = box.width;
+  let height = box.height;
+  if (target.width !== null && Number.isFinite(target.width)) {
+    width = Math.min(Math.max(1, Math.round(target.width)), origWidth) * sx;
+  }
+  if (target.height !== null && Number.isFinite(target.height)) {
+    height = Math.min(Math.max(1, Math.round(target.height)), origHeight) * sy;
+  }
+  return clampBox({ x: box.x, y: box.y, width, height }, displayWidth, displayHeight, minSize);
+}
+
+/**
+ * Parse a W/H input value into a positive number, or null for empty / invalid
+ * input (callers leave that axis unchanged). Accepts BOTH number and string:
+ * Vue casts `<input type="number" v-model>` to number even WITHOUT the .number
+ * modifier (castToNumber in runtime-dom keys off type==="number"), while the
+ * String()-based refill on blur feeds a string. Treating it as string-only and
+ * calling .trim() on a number throws — which silently aborted the resize.
+ * Negative / zero values pass through and get clamped to [1, original] later.
+ */
+export function parseDimInput(s: string | number): number | null {
+  if (typeof s === "number") return Number.isFinite(s) ? s : null;
+  const t = s.trim();
+  if (t === "") return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Aspect ratio as a fully-reduced integer ratio `w:h` (e.g. "16:9", "184:171"). */
 export function aspectRatioLabel(width: number, height: number): string {
   if (!(width >= 1) || !(height >= 1)) return "—";
   const w = Math.round(width);
   const h = Math.round(height);
   const g = gcd(w, h);
-  const a = w / g;
-  const b = h / g;
-  if (a <= 64 && b <= 64) return `${a}:${b}`;
-  return (width / height).toFixed(2);
+  return `${w / g}:${h / g}`;
 }
 
 function gcd(a: number, b: number): number {
