@@ -29,16 +29,24 @@ test("manifest declares the toolbox plugin identity and the decode feature", () 
   assert.deepEqual(manifest.detectors[0].supportedInputKinds, ["text"]);
   assert.deepEqual(manifest.detectors[0].attachmentTypes, ["plugin.pasty.toolbox.decode.preview"]);
 
-  assert.equal(manifest.actions.length, 6);
+  assert.equal(manifest.actions.length, 7);
   assert.deepEqual(
     manifest.actions.map((action) => action.id),
-    ["uppercase", "lowercase", "camelCase", "pascalCase", "snakeCase", "kebabCase"],
+    ["uppercase", "lowercase", "camelCase", "pascalCase", "snakeCase", "kebabCase", "image-edit"],
   );
-  for (const action of manifest.actions) {
+  // The six case-convert actions are text, auto-run, and UI-less.
+  const caseActions = manifest.actions.filter((action) => action.id !== "image-edit");
+  assert.equal(caseActions.length, 6);
+  for (const action of caseActions) {
     assert.deepEqual(action.supportedItemTypes, ["text"]);
     assert.equal(action.lifecycle, "auto-run");
     assert.equal(action.uiEntry, undefined);
   }
+  // image-edit is the draft-lifecycle crop & compress action for image items.
+  const imageEdit = manifest.actions.find((action) => action.id === "image-edit");
+  assert.deepEqual(imageEdit.supportedItemTypes, ["image"]);
+  assert.equal(imageEdit.lifecycle, "draft");
+  assert.equal(imageEdit.uiEntry, "actions/image-edit/index.html");
 });
 
 test("package declares toolbox identity and verification scripts", () => {
@@ -64,7 +72,9 @@ test("feature registry merges decode handlers and omits empty slots", () => {
   assert.ok(runtime.actions.pascalCase);
   assert.ok(runtime.actions.snakeCase);
   assert.ok(runtime.actions.kebabCase);
-  assert.equal(runtime.messageHandlers, undefined);
+  // image-edit contributes a draft action plus its process-image messageHandler.
+  assert.ok(runtime.actions["image-edit"]);
+  assert.ok(runtime.messageHandlers["image-edit/process-image"]);
 
   assert.throws(
     () => mergeFeatures([{ detectors: { dup: {} } }, { detectors: { dup: {} } }]),

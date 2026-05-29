@@ -73,6 +73,14 @@
       "supportedItemTypes": ["text"],
       "lifecycle": "auto-run",
       "keywords": ["kebab-case", "kebab", "case", "短横线"]
+    },
+    {
+      "id": "image-edit",
+      "title": "Crop & Compress",
+      "supportedItemTypes": ["image"],
+      "lifecycle": "draft",
+      "uiEntry": "actions/image-edit/index.html",
+      "keywords": ["crop", "compress", "resize", "裁剪", "压缩"]
     }
   ]
 }

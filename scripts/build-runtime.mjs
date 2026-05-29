@@ -15,6 +15,10 @@ await build({
   entryPoints: [path.resolve(projectRoot, "src/plugin.ts")],
   outfile: path.resolve(outputDirectory, "plugin.cjs"),
   bundle: true,
+  // sharp ships prebuilt native (.node) binaries that esbuild cannot bundle.
+  // Keep it external so the runtime require()s it from the host's node_modules
+  // (populated by scripts/install.mjs `npm install`). All other deps inline.
+  external: ["sharp"],
   format: "cjs",
   platform: "node",
   target: "node18",
