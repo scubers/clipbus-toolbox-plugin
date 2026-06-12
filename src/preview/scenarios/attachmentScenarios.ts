@@ -6,9 +6,9 @@
 import { ATTACHMENT_TYPE, ATTACHMENT_KEY } from "../../features/decode-renderer/payload";
 import type { DecodeEncoding, DecodePayload } from "../../features/decode-renderer/payload";
 import { buttonsFor } from "../../features/decode-renderer/renderer";
-import type { PluginActionButton } from "@pasty/plugin-sdk/runtime";
+import type { PluginActionButton } from "@clipbus/plugin-sdk/runtime";
 
-const PLUGIN_ID = "plugin.pasty.toolbox";
+const PLUGIN_ID = "plugin.clipbus.toolbox";
 const RENDERER_ID = "decode-renderer";
 
 export interface AttachmentScenarioBootstrap {
@@ -99,7 +99,7 @@ export const attachmentScenarios: AttachmentScenario[] = [
     label: "Base64 → text",
     encoding: "base64",
     original: "SGVsbG8sIFdvcmxkISBQYXN0eSBkZWNvZGUgcHJldmlldy4=",
-    decoded: "Hello, World! Pasty decode preview.",
+    decoded: "Hello, World! Clipbus decode preview.",
     accentHex: "#f59e0b",
     expanded: true,
   }),
@@ -108,7 +108,7 @@ export const attachmentScenarios: AttachmentScenario[] = [
     label: "Base64 → JSON",
     encoding: "base64",
     original: "eyJuYW1lIjoiUGFzdHkiLCJraW5kIjoiZGVjb2RlIn0=",
-    decoded: '{"name":"Pasty","kind":"decode"}',
+    decoded: '{"name":"Clipbus","kind":"decode"}',
     decodedIsJSON: true,
     accentHex: "#f59e0b",
     expanded: true,
@@ -136,8 +136,8 @@ export const attachmentScenarios: AttachmentScenario[] = [
     id: "url",
     label: "URL-encoded",
     encoding: "url",
-    original: "https%3A%2F%2Fexample.com%2Fsearch%3Fq%3Dpasty%20decode%26lang%3Dzh",
-    decoded: "https://example.com/search?q=pasty decode&lang=zh",
+    original: "https%3A%2F%2Fexample.com%2Fsearch%3Fq%3Dclipbus%20decode%26lang%3Dzh",
+    decoded: "https://example.com/search?q=clipbus decode&lang=zh",
     accentHex: "#3b82f6",
   }),
   createDecodeScenario({

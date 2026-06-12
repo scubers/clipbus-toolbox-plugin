@@ -86,7 +86,7 @@ export function applyFormat(pipeline: sharp.Sharp, format: OutputFormat, quality
  * Crop + compress the current item's image and write the result to a
  * host-allocated temp path. The original is never mutated (sharp reads a
  * materialized copy). Returns the temp path + format hint for
- * pasty.action.complete({ result: { resultKind: 'image', ... } }).
+ * clipbus.action.complete({ result: { resultKind: 'image', ... } }).
  */
 export async function processImage(host: ImageEditHost, req: ProcessImageReq): Promise<ProcessImageResp> {
   const { path: srcPath } = await host.item.materializeImagePath();

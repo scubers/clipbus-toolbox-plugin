@@ -1,8 +1,8 @@
 {
-  "name": "@pasty/toolbox-plugin",
+  "name": "@clipbus/toolbox-plugin",
   "private": true,
   "version": "0.1.0",
-  "description": "Pasty aggregate plugin hosting multiple clipboard features; currently a string decoder (JWT, escaped JSON, URL, timestamp, date, Base64) shown as an inline preview card.",
+  "description": "Clipbus aggregate plugin hosting multiple clipboard features: a string decoder (JWT, escaped JSON, URL, timestamp, date, Base64) shown as an inline preview card, case-convert auto-actions, and an image crop & compress draft action.",
   "engines": {
     "node": ">=18.0.0"
   },
@@ -22,7 +22,7 @@
     "test": "node --experimental-strip-types --require ./tests/setup.cjs --test ./tests/**/*.test.cjs"
   },
   "dependencies": {
-    "@pasty/plugin-sdk": "^0.4.0",
+    "@clipbus/plugin-sdk": "^0.7.0",
     "sharp": "^0.34.5",
     "vue": "^3.5.13"
   },

@@ -108,8 +108,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
-import { autoFit } from "@pasty/plugin-sdk/dom";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { autoFit } from "@clipbus/plugin-sdk/dom";
 import { PROCESS_IMAGE, type ImageEditDraft, type ProcessImageReq, type ProcessImageResp } from "./contracts";
 import {
   applyDrag,
@@ -341,7 +341,7 @@ function endDrag(e: PointerEvent): void {
 
 async function loadPreview(): Promise<void> {
   try {
-    const { url } = await pasty.asset.currentItemImageUrl();
+    const { url } = await clipbus.asset.currentItemImageUrl();
     if (url) previewUrl.value = url;
     else errorMsg.value = "This item isn't an image and can't be edited.";
   } catch {
@@ -351,7 +351,7 @@ async function loadPreview(): Promise<void> {
 
 async function setApplyButton(title: string, isEnabled: boolean): Promise<void> {
   try {
-    await pasty.action.setButtons({ buttons: [{ id: "apply", title, isEnabled }] });
+    await clipbus.action.setButtons({ buttons: [{ id: "apply", title, isEnabled }] });
   } catch {
     // Local preview workbench has no host bridge.
   }
@@ -375,12 +375,12 @@ async function apply(): Promise<void> {
     if (res && (res.width !== crop.width || res.height !== crop.height)) {
       payload.resize = res;
     }
-    const resp = await pasty.runtime.invoke<ProcessImageResp>({
+    const resp = await clipbus.runtime.invoke<ProcessImageResp>({
       key: PROCESS_IMAGE,
       payload,
       timeoutMs: 60_000,
     });
-    await pasty.action.complete({
+    await clipbus.action.complete({
       result: {
         resultKind: "image",
         imageTempPath: resp.imageTempPath,
@@ -403,9 +403,9 @@ let disconnectAutoFit: (() => void) | null = null;
 let resizeObserver: ResizeObserver | null = null;
 
 onMounted(() => {
-  applyDraft(pasty.action.draft.current());
-  unsubDraft = pasty.action.draft.on(applyDraft);
-  unsubHostInvoke = pasty.action.onHostInvoke.on((payload) => {
+  applyDraft(clipbus.action.draft.current());
+  unsubDraft = clipbus.action.draft.on(applyDraft);
+  unsubHostInvoke = clipbus.action.onHostInvoke.on((payload) => {
     if (payload.buttonID === "apply") void apply();
   });
   void loadPreview();
@@ -446,9 +446,9 @@ onUnmounted(() => {
   padding: 6px 10px;
   font-size: 11.5px;
   line-height: 1.4;
-  color: var(--pasty-danger, #e53e3e);
-  background: color-mix(in srgb, var(--pasty-danger, #e53e3e) 10%, transparent);
-  border: 0.5px solid color-mix(in srgb, var(--pasty-danger, #e53e3e) 30%, transparent);
+  color: var(--clipbus-danger, #e53e3e);
+  background: color-mix(in srgb, var(--clipbus-danger, #e53e3e) 10%, transparent);
+  border: 0.5px solid color-mix(in srgb, var(--clipbus-danger, #e53e3e) 30%, transparent);
   border-radius: 6px;
 }
 
@@ -481,7 +481,7 @@ onUnmounted(() => {
 .ie-crop {
   position: absolute;
   box-sizing: border-box;
-  border: 1px solid color-mix(in srgb, var(--pasty-accent, #3b82f6) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--clipbus-accent, #3b82f6) 70%, transparent);
   outline: 0.5px solid rgba(255, 255, 255, 0.35);
   outline-offset: -0.5px;
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.38);
@@ -495,7 +495,7 @@ onUnmounted(() => {
 */
 .ie-handle {
   position: absolute;
-  --hc: var(--pasty-accent, #3b82f6); /* 角标颜色 */
+  --hc: var(--clipbus-accent, #3b82f6); /* 角标颜色 */
   --hw: 2px; /* 角标线宽 */
   --hl: 10px; /* 角标臂长 */
   background: transparent;
@@ -503,7 +503,7 @@ onUnmounted(() => {
 }
 
 .ie-handle:hover {
-  --hc: color-mix(in srgb, var(--pasty-accent, #3b82f6) 80%, #fff);
+  --hc: color-mix(in srgb, var(--clipbus-accent, #3b82f6) 80%, #fff);
 }
 
 /* 四角：16px 触控热区，用 before/after 画 L 形角标 */
@@ -565,7 +565,7 @@ onUnmounted(() => {
   white-space: nowrap;
   font-size: 11.5px;
   letter-spacing: 0.01em;
-  color: var(--pasty-text-secondary, inherit);
+  color: var(--clipbus-text-secondary, inherit);
 }
 
 .ie-quality {
@@ -582,7 +582,7 @@ onUnmounted(() => {
   font-size: 12px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: var(--pasty-text-primary, inherit);
+  color: var(--clipbus-text-primary, inherit);
 }
 
 /* 自定义滑块：细 track + 白圆点 thumb，已填充段用 native accent 色 */
@@ -607,8 +607,8 @@ onUnmounted(() => {
   border-radius: 999px;
   background: linear-gradient(
     to right,
-    var(--pasty-accent, #3b82f6) 0 var(--ie-pct, 80%),
-    var(--pasty-divider, rgba(127, 127, 127, 0.18)) var(--ie-pct, 80%) 100%
+    var(--clipbus-accent, #3b82f6) 0 var(--ie-pct, 80%),
+    var(--clipbus-divider, rgba(127, 127, 127, 0.18)) var(--ie-pct, 80%) 100%
   );
 }
 
@@ -636,19 +636,19 @@ onUnmounted(() => {
 .ie-slider:focus-visible::-webkit-slider-thumb {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.2),
-    0 0 0 3px color-mix(in srgb, var(--pasty-accent, #3b82f6) 30%, transparent);
+    0 0 0 3px color-mix(in srgb, var(--clipbus-accent, #3b82f6) 30%, transparent);
 }
 
 .ie-slider::-moz-range-track {
   height: 3px;
   border-radius: 999px;
-  background: var(--pasty-divider, rgba(127, 127, 127, 0.18));
+  background: var(--clipbus-divider, rgba(127, 127, 127, 0.18));
 }
 
 .ie-slider::-moz-range-progress {
   height: 3px;
   border-radius: 999px;
-  background: var(--pasty-accent, #3b82f6);
+  background: var(--clipbus-accent, #3b82f6);
 }
 
 .ie-slider::-moz-range-thumb {
@@ -665,7 +665,7 @@ onUnmounted(() => {
   font-size: 10.5px;
   line-height: 1.45;
   letter-spacing: 0.005em;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
 }
 
 /* ===== Crop / Output 行 ===== */
@@ -681,7 +681,7 @@ onUnmounted(() => {
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  color: var(--pasty-text-primary, inherit);
+  color: var(--clipbus-text-primary, inherit);
 }
 
 /* 缩放百分比（Output 行尾，靠右） */
@@ -690,7 +690,7 @@ onUnmounted(() => {
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
   user-select: none;
 }
 
@@ -701,8 +701,8 @@ onUnmounted(() => {
   gap: 3px;
   padding: 2px 6px 2px 5px;
   border-radius: 5px;
-  background: color-mix(in srgb, var(--pasty-surface, #808080) 8%, transparent);
-  border: 0.5px solid var(--pasty-border, rgba(128, 128, 128, 0.2));
+  background: color-mix(in srgb, var(--clipbus-surface, #808080) 8%, transparent);
+  border: 0.5px solid var(--clipbus-border, rgba(128, 128, 128, 0.2));
   cursor: text;
   transition:
     border-color 0.1s ease,
@@ -710,8 +710,8 @@ onUnmounted(() => {
 }
 
 .ie-dim-field:focus-within {
-  border-color: color-mix(in srgb, var(--pasty-accent, #3b82f6) 60%, transparent);
-  background: color-mix(in srgb, var(--pasty-accent, #3b82f6) 6%, transparent);
+  border-color: color-mix(in srgb, var(--clipbus-accent, #3b82f6) 60%, transparent);
+  background: color-mix(in srgb, var(--clipbus-accent, #3b82f6) 6%, transparent);
 }
 
 .ie-dim-unit {
@@ -719,13 +719,13 @@ onUnmounted(() => {
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
   user-select: none;
   transition: color 0.1s ease;
 }
 
 .ie-dim-field:focus-within .ie-dim-unit {
-  color: var(--pasty-accent, #3b82f6);
+  color: var(--clipbus-accent, #3b82f6);
 }
 
 .ie-dim-input {
@@ -737,7 +737,7 @@ onUnmounted(() => {
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   text-align: right;
-  color: var(--pasty-text-primary, inherit);
+  color: var(--clipbus-text-primary, inherit);
   outline: none;
   -webkit-appearance: none;
   -moz-appearance: textfield;
@@ -753,14 +753,14 @@ onUnmounted(() => {
 .ie-dim-suffix {
   font-size: 10px;
   letter-spacing: 0.02em;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
   user-select: none;
 }
 
 .ie-dims-sep {
   flex-shrink: 0;
   font-size: 11px;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
   user-select: none;
 }
 
@@ -769,13 +769,13 @@ onUnmounted(() => {
   margin-left: auto;
   padding: 2px 5px;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--pasty-surface, #808080) 6%, transparent);
-  border: 0.5px solid var(--pasty-divider, rgba(128, 128, 128, 0.12));
+  background: color-mix(in srgb, var(--clipbus-surface, #808080) 6%, transparent);
+  border: 0.5px solid var(--clipbus-divider, rgba(128, 128, 128, 0.12));
   font-family: "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
   font-size: 10.5px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.02em;
-  color: var(--pasty-text-tertiary, #94a3b8);
+  color: var(--clipbus-text-tertiary, #94a3b8);
   user-select: none;
 }
 </style>

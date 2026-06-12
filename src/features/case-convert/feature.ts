@@ -1,5 +1,5 @@
-import { actionResult } from "@pasty/plugin-sdk/runtime";
-import type { PluginAutoRunActionHandler } from "@pasty/plugin-sdk/runtime";
+import { actionResult } from "@clipbus/plugin-sdk/runtime";
+import type { PluginAutoRunActionHandler } from "@clipbus/plugin-sdk/runtime";
 import type { PluginFeature } from "../registry.ts";
 
 // The SDK handler type covers both action lifecycles in one shape, so it lists

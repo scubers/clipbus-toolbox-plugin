@@ -68,9 +68,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { pasty } from "@pasty/plugin-sdk/ui";
-import { autoFit } from "@pasty/plugin-sdk/dom";
-import type { PluginAttachmentPayload } from "@pasty/plugin-sdk/ui";
+import { clipbus } from "@clipbus/plugin-sdk/ui";
+import { autoFit } from "@clipbus/plugin-sdk/dom";
+import type { PluginAttachmentPayload } from "@clipbus/plugin-sdk/ui";
 import { useTopicRef } from "../../shared/composables/useTopicRef";
 import { highlightJson } from "../../shared/jsonHighlight";
 import { decodeDecodePayload, encodingLabel, type DecodePayload } from "./payload";
@@ -84,7 +84,7 @@ const AUTO_FIT_MIN = 32;
 const AUTO_FIT_MAX = 480;
 
 const rootEl = ref<HTMLElement | null>(null);
-const attachmentPayload = useTopicRef(pasty.item.attachment);
+const attachmentPayload = useTopicRef(clipbus.item.attachment);
 const payload = computed<DecodePayload | null>(() =>
   decodeDecodePayload((attachmentPayload.value as PluginAttachmentPayload | undefined)?.attachment?.payloadJson),
 );
@@ -166,7 +166,7 @@ function buildTimeBody(p: DecodePayload): string {
 
 async function loadTimeFormat(): Promise<void> {
   try {
-    const result = await pasty.settings.get({ key: TIMESTAMP_FORMAT_SETTING_KEY });
+    const result = await clipbus.settings.get({ key: TIMESTAMP_FORMAT_SETTING_KEY });
     const value = result?.value;
     if (typeof value === "string" && value.trim().length > 0) {
       timeFormat.value = value;
@@ -197,7 +197,7 @@ function buttonsForCurrentState(): Array<{ id: string; title: string; isEnabled:
 
 async function syncHostButtons(): Promise<void> {
   try {
-    await pasty.attachmentRenderer.setButtons({ buttons: buttonsForCurrentState() });
+    await clipbus.attachmentRenderer.setButtons({ buttons: buttonsForCurrentState() });
   } catch {
     // Local preview may run without the host WebView bridge.
   }
@@ -205,7 +205,7 @@ async function syncHostButtons(): Promise<void> {
 
 async function copyTextToClipboard(text: string): Promise<void> {
   try {
-    await pasty.clipboard.copyText({ text });
+    await clipbus.clipboard.copyText({ text });
   } catch {
     await navigator.clipboard?.writeText(text);
   }
@@ -266,7 +266,7 @@ async function onCopyJson(): Promise<void> {
 function onToggle(): void {
   // Flip expand state only. The [payload, localExpanded] watcher repushes the
   // host action strip (Show More/Less), and autoFit observes the DOM mutation
-  // and reports the new height via pasty.window.setHeight — no manual sync.
+  // and reports the new height via clipbus.window.setHeight — no manual sync.
   localExpanded.value = !localExpanded.value;
 }
 
@@ -299,12 +299,12 @@ watch(
 );
 
 onMounted(async () => {
-  unsubHostInvoke = pasty.attachmentRenderer.onHostInvoke.on(handleHostInvoke);
+  unsubHostInvoke = clipbus.attachmentRenderer.onHostInvoke.on(handleHostInvoke);
   void loadTimeFormat();
   await nextTick();
   // Observe the always-present shell root. autoFit tracks its content height
   // (collapsed row ≈ 32px; expanded row + code block, capped at 480px) and
-  // drives pasty.window.setHeight. Bounds mirror manifest height policy.
+  // drives clipbus.window.setHeight. Bounds mirror manifest height policy.
   if (rootEl.value) {
     disconnectAutoFit = autoFit({ min: AUTO_FIT_MIN, max: AUTO_FIT_MAX, target: rootEl.value });
   }
@@ -392,7 +392,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 12px;
-  color: var(--pasty-text-secondary, inherit);
+  color: var(--clipbus-text-secondary, inherit);
 }
 
 .icon-btn {
@@ -407,12 +407,12 @@ onUnmounted(() => {
   border-radius: 4px;
   background: none;
   cursor: pointer;
-  color: var(--pasty-text-tertiary, inherit);
+  color: var(--clipbus-text-tertiary, inherit);
   transition: background 0.1s;
 }
 
 .icon-btn:hover {
-  background: var(--pasty-divider, rgba(127, 127, 127, 0.12));
+  background: var(--clipbus-divider, rgba(127, 127, 127, 0.12));
 }
 
 .chevron-rotated {
@@ -424,8 +424,8 @@ onUnmounted(() => {
   margin-top: 8px;
   margin-bottom: 0;
   padding: 12px;
-  background: var(--pasty-surface, transparent);
-  border: 1px solid var(--pasty-border, transparent);
+  background: var(--clipbus-surface, transparent);
+  border: 1px solid var(--clipbus-border, transparent);
   border-radius: 4px;
   font-family: "SF Mono", "Menlo", "Consolas", "Liberation Mono", monospace;
   font-size: 12px;
@@ -433,14 +433,14 @@ onUnmounted(() => {
   max-height: 360px;
   overflow: auto;
   white-space: pre;
-  color: var(--pasty-text-primary, inherit);
+  color: var(--clipbus-text-primary, inherit);
 }
 
 .decode-empty {
   margin: 0;
   padding: 8px 4px;
   font-size: 12px;
-  color: var(--pasty-text-tertiary, inherit);
+  color: var(--clipbus-text-tertiary, inherit);
 }
 
 .sr-only {

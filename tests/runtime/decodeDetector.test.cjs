@@ -158,10 +158,10 @@ test("detector emits one JWT artifact with the new array return shape", async ()
 
   assert.equal(artifacts.length, 1);
   const artifact = artifacts[0];
-  assert.equal(artifact.attachmentType, "plugin.pasty.toolbox.decode.preview");
+  assert.equal(artifact.attachmentType, "plugin.clipbus.toolbox.decode.preview");
   assert.equal(artifact.attachmentKey, "primary");
   assert.equal(artifact.attachmentSyncScope, "syncable");
-  assert.equal(artifact.searchProjection.scope, "pasty_toolbox_decode");
+  assert.equal(artifact.searchProjection.scope, "clipbus_toolbox_decode");
   assert.equal(artifact.searchProjection.label, "JWT");
 
   const payload = JSON.parse(artifact.payloadJson);

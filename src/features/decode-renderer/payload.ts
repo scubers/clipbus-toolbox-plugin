@@ -2,10 +2,10 @@ import type {
   PluginContentEnvelope,
   PluginDetectorArtifact,
   PluginDetectorSearchProjection,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 import type { DetectionResult } from "./detection.ts";
 
-export const ATTACHMENT_TYPE = "plugin.pasty.toolbox.decode.preview";
+export const ATTACHMENT_TYPE = "plugin.clipbus.toolbox.decode.preview";
 export const ATTACHMENT_KEY = "primary";
 export const ORIGINAL_TRUNCATION_BYTES = 4 * 1024;
 const SEARCH_TEXT_DECODED_LIMIT = 4096;
@@ -173,7 +173,7 @@ export function buildSearchProjection(payload: DecodePayload): PluginDetectorSea
     return undefined;
   }
   return {
-    scope: "pasty_toolbox_decode",
+    scope: "clipbus_toolbox_decode",
     searchText,
     label,
   };

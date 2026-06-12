@@ -1,8 +1,8 @@
-# Pasty Toolbox
+# Clipbus Toolbox
 
-> 写新插件先看 [GUIDE.md](./GUIDE.md)。它和本工程一起就是开发 Pasty 插件的完整起步资料。
+> 写新插件先看 [GUIDE.md](./GUIDE.md)。它和本工程一起就是开发 Clipbus 插件的完整起步资料。
 
-一个 Pasty 粘贴板插件：自动识别剪贴板文本的编码，并在一张可折叠卡片里内联解码预览。基于独立发布的 SDK 包 `@pasty/plugin-sdk` 开发。
+一个 Clipbus 粘贴板插件：自动识别剪贴板文本的编码，并在一张可折叠卡片里内联解码预览。基于独立发布的 SDK 包 `@clipbus/plugin-sdk` 开发。
 
 ## 检测优先链
 
@@ -15,14 +15,14 @@ detector 对文本按以下顺序尝试，命中即停：
 5. **日期字符串** — `Date.parse` 可识别、带日期/时间分隔符的字符串
 6. **Base64** — 标准 / URL-safe，可打印率 ≥ 95%
 
-命中后产出 `plugin.pasty.toolbox.decode.preview` 附件，由折叠卡片渲染：chip 标注编码类型、一行预览、复制按钮、展开 chevron。展开体显示完整解码内容（JSON 语法高亮）或时间详情（local / UTC / ISO / epoch）。卡片高度用 SDK `autoFit` 在 32–480px 间自适应。时间格式读取宿主设置 `timestampFormat`（默认 `yyyy-MM-dd HH:mm:ss`）。
+命中后产出 `plugin.clipbus.toolbox.decode.preview` 附件，由折叠卡片渲染：chip 标注编码类型、一行预览、复制按钮、展开 chevron。展开体显示完整解码内容（JSON 语法高亮）或时间详情（local / UTC / ISO / epoch）。卡片高度用 SDK `autoFit` 在 32–480px 间自适应。时间格式读取宿主设置 `timestampFormat`（默认 `yyyy-MM-dd HH:mm:ss`）。
 
 ## 工程结构
 
 ```text
-pasty-toolbox-plugin/
-├── manifest.json                       ← plugin.pasty.toolbox
-├── package.json                        ← 依赖 @pasty/plugin-sdk（独立 npm 包）
+clipbus-toolbox-plugin/
+├── manifest.json                       ← plugin.clipbus.toolbox
+├── package.json                        ← 依赖 @clipbus/plugin-sdk（独立 npm 包）
 ├── scripts/                            ← build:runtime / build:ui / verify:build
 ├── src/
 │   ├── features/decode-renderer/       ← detector + 解码器 + renderer + Vue 卡片
@@ -43,10 +43,10 @@ pasty-toolbox-plugin/
 ## 常用命令
 
 ```sh
-npm install       # 装依赖（含 @pasty/plugin-sdk）
+npm install       # 装依赖（含 @clipbus/plugin-sdk）
 npm run dev       # 启动 Vite 预览工作台（解码卡片，多场景 + 主题切换）
 npm test          # 运行 tests/ 下集成测试
 npm run build     # typecheck + lint + 生产构建到 dist/
 ```
 
-SDK 完整 API、字段规范与权限模型见 [GUIDE.md](./GUIDE.md) 与包内 `API.md`（[`@pasty/plugin-sdk`](https://www.npmjs.com/package/@pasty/plugin-sdk)）。
+SDK 完整 API、字段规范与权限模型见 [GUIDE.md](./GUIDE.md) 与包内 `API.md`（[`@clipbus/plugin-sdk`](https://www.npmjs.com/package/@clipbus/plugin-sdk)）。

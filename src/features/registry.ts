@@ -2,7 +2,7 @@ import type {
   PluginAttachmentRendererHandler,
   PluginAutoRunActionHandler,
   PluginDetectorHandler,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 
 // The SDK runtime entry re-exports the handler types but not `PluginRegistry`
 // or `MessageHandler`, so this mirrors the registry shape locally. Message

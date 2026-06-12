@@ -1,10 +1,10 @@
-# Pasty Toolbox 聚合插件改造设计
+# Clipbus Toolbox 聚合插件改造设计
 
 > 日期：2026-05-28　状态：已批准（用户经 autopilot 授权实现）
 
 ## 背景与目标
 
-本工程原为单一用途的 string-decode 插件（`plugin.pasty.awesome.decode`）。现重新定位为**聚合插件 Pasty Toolbox**：decode 只是首个 feature，后续可低成本追加新 feature。
+本工程原为单一用途的 string-decode 插件（`plugin.clipbus.awesome.decode`）。现重新定位为**聚合插件 Clipbus Toolbox**：decode 只是首个 feature，后续可低成本追加新 feature。
 
 模板本就为多 feature 设计——`src/features/<name>/` 已是约定目录，`scripts/build-ui.mjs` 自动发现每个 feature 目录并按 `-renderer` 后缀分类。所以本次不是大重构，而是**收尾通用化 + 改名**。
 
@@ -12,7 +12,7 @@
 
 ## 决策
 
-- **身份**：`plugin.id = plugin.pasty.toolbox`，`title = "Pasty Toolbox"`。decode 的 attachmentType 收敛到带 feature 段的 `plugin.pasty.toolbox.decode.preview`，未来每个 feature 用 `plugin.pasty.toolbox.<feature>.*`。`package.json` 名（私有，仅标签）→ `@pasty/toolbox-plugin`。
+- **身份**：`plugin.id = plugin.clipbus.toolbox`，`title = "Clipbus Toolbox"`。decode 的 attachmentType 收敛到带 feature 段的 `plugin.clipbus.toolbox.decode.preview`，未来每个 feature 用 `plugin.clipbus.toolbox.<feature>.*`。`package.json` 名（私有，仅标签）→ `@clipbus/toolbox-plugin`。
 - **扩展方式**：约定 + 手写 manifest（manifest 是宿主直读的声明文件，保持显式）。运行时引入 feature registry 聚合，`plugin.ts` 从此不再随新增 feature 改动。
 - **范围**：decode 仍是唯一 feature，不新增功能代码，不新增用户文档；README 仅做身份字符串替换。
 - **仓库目录改名**与 `docs/specs/` 历史文档、`dist/`（gitignore）不在本次改动内。

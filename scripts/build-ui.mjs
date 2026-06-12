@@ -40,7 +40,7 @@ async function discoverPages() {
     pages.push({
       name: featureName,
       kind,
-      globalName: `PastyPlugin${pascalCase(featureName)}`,
+      globalName: `ClipbusPlugin${pascalCase(featureName)}`,
       entry: path.join(featurePath, "main.ts"),
       template: path.join(featurePath, "index.html"),
     });

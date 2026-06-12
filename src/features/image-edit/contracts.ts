@@ -16,7 +16,7 @@ export interface CropRect {
 
 /**
  * initialDraft seeded by resolveSession (Node) and read by the UI via
- * pasty.action.draft.current(). Carries the coordinate basis + slider seed so
+ * clipbus.action.draft.current(). Carries the coordinate basis + slider seed so
  * the UI can set up before the preview image finishes loading.
  */
 export interface ImageEditDraft {
@@ -37,7 +37,7 @@ export interface ProcessImageReq {
   resize?: { width: number; height: number };
 }
 
-/** runtime → UI response; fed straight into pasty.action.complete. */
+/** runtime → UI response; fed straight into clipbus.action.complete. */
 export interface ProcessImageResp {
   imageTempPath: string;
   imageFormatHint: string;

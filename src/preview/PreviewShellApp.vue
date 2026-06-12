@@ -93,14 +93,14 @@ const activeButtons = ref<HostButton[]>([]);
 
 function previewHostButton(button: HostButton): void {
   // Attachment-renderer host invokes carry `{ buttonID }` on the
-  // pasty-plugin-attachment-host-invoke stream (post plugin-api-shrink wire).
+  // clipbus-plugin-attachment-host-invoke stream (post plugin-api-shrink wire).
   window.dispatchEvent(
-    new CustomEvent("pasty-plugin-attachment-host-invoke", { detail: { buttonID: button.id } }),
+    new CustomEvent("clipbus-plugin-attachment-host-invoke", { detail: { buttonID: button.id } }),
   );
 }
 
 onMounted(() => {
-  window.addEventListener("pasty-plugin-set-buttons", (e) => {
+  window.addEventListener("clipbus-plugin-set-buttons", (e) => {
     const ev = e as CustomEvent<{ buttons?: HostButton[] }>;
     activeButtons.value = Array.isArray(ev.detail?.buttons) ? ev.detail.buttons : [];
   });
@@ -188,31 +188,31 @@ function applyPreviewState(): void {
 
   const bootstrap = clone(scenario.bootstrap) as unknown as Record<string, unknown>;
 
-  window.__PASTY_PLUGIN_CONTEXT__ = null;
-  window.__PASTY_PLUGIN_ITEM__ = null;
-  window.__PASTY_PLUGIN_ATTACHMENT__ = null;
-  window.__PASTY_PLUGIN_THEME__ = null;
+  window.__CLIPBUS_PLUGIN_CONTEXT__ = null;
+  window.__CLIPBUS_PLUGIN_ITEM__ = null;
+  window.__CLIPBUS_PLUGIN_ATTACHMENT__ = null;
+  window.__CLIPBUS_PLUGIN_THEME__ = null;
 
-  const pluginID = String(bootstrap.pluginID ?? "plugin.pasty.toolbox");
+  const pluginID = String(bootstrap.pluginID ?? "plugin.clipbus.toolbox");
   const themeSnapshot = buildThemeSnapshot(scenario.accentHex ?? "#2563eb");
   const context = { mode: "attachmentRenderer", pluginID };
   const itemPayload = bootstrap.item;
   const attachmentPayload = { item: bootstrap.item, attachment: bootstrap.attachment };
 
-  window.__PASTY_PLUGIN_CONTEXT__ = context;
-  window.__PASTY_PLUGIN_ITEM__ = itemPayload;
-  window.__PASTY_PLUGIN_ATTACHMENT__ = attachmentPayload;
-  window.__PASTY_PLUGIN_THEME__ = themeSnapshot;
+  window.__CLIPBUS_PLUGIN_CONTEXT__ = context;
+  window.__CLIPBUS_PLUGIN_ITEM__ = itemPayload;
+  window.__CLIPBUS_PLUGIN_ATTACHMENT__ = attachmentPayload;
+  window.__CLIPBUS_PLUGIN_THEME__ = themeSnapshot;
 
-  dispatchPreviewEvent("pasty-plugin-context", context);
-  dispatchPreviewEvent("pasty-plugin-item", itemPayload);
-  dispatchPreviewEvent("pasty-plugin-attachment", attachmentPayload);
-  dispatchPreviewEvent("pasty-plugin-theme", themeSnapshot);
+  dispatchPreviewEvent("clipbus-plugin-context", context);
+  dispatchPreviewEvent("clipbus-plugin-item", itemPayload);
+  dispatchPreviewEvent("clipbus-plugin-attachment", attachmentPayload);
+  dispatchPreviewEvent("clipbus-plugin-theme", themeSnapshot);
 
   // Seed the host button strip from the scenario bootstrap. In local preview
   // the SDK does not emit setButtons over a window event, so the live
   // renderer's syncHostButtons() is a no-op here; the seed keeps the strip
-  // populated. Clicks still flow through pasty-plugin-attachment-host-invoke.
+  // populated. Clicks still flow through clipbus-plugin-attachment-host-invoke.
   activeButtons.value = scenario.bootstrap.buttons;
   statusMessage.value = `Renderer preview loaded: ${scenario.label}`;
 }

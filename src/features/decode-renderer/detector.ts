@@ -2,7 +2,7 @@ import type {
   PluginDetectorArtifact,
   PluginDetectorHandler,
   PluginDetectorInput,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 import { preprocess, runPriorityChain } from "./detection.ts";
 import { buildDecodeArtifact, createDecodePayload, readTextContent } from "./payload.ts";
 

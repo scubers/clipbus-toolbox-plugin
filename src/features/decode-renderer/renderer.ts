@@ -3,7 +3,7 @@ import type {
   PluginAttachmentRendererHandler,
   PluginAttachmentResolveResult,
   PluginResolveAttachmentInput,
-} from "@pasty/plugin-sdk/runtime";
+} from "@clipbus/plugin-sdk/runtime";
 import { decodeDecodePayload, encodingLabel, type DecodePayload } from "./payload.ts";
 
 export function buttonsFor(payload: DecodePayload): PluginActionButton[] {
